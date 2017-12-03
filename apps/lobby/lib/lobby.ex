@@ -19,14 +19,14 @@ defmodule Lobby do
   def handle_info({:udp, socket, ip, port, data}, connections) do
     client = {ip, port}
 
-    unless Map.has_key?(connections, client) do
+    connections = Map.put_new_lazy(connections, client, fn ->
       {:ok, conn} = Lobby.ConnectionSupervisor.start_connection(socket, ip, port)
-      connections = Map.put(connections, client, conn)
-    else
-      conn = Map.get(connections, client)
-    end
+      conn
+    end)
 
-    Lobby.Connection.process_packet(conn, data)
+    connections
+      |> Map.get(client)
+      |> Lobby.Connection.process_packet(data)
 
     {:noreply, connections}
   end
