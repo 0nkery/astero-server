@@ -1,15 +1,10 @@
 defmodule Lobby.Application do
-  # See https://hexdocs.pm/elixir/Application.html
-  # for more information on OTP Applications
-  @moduledoc false
-
   use Application
 
   def start(_type, _args) do
     # List all child processes to be supervised
     children = [
-      # Starts a worker by calling: Lobby.Worker.start_link(arg)
-      # {Lobby.Worker, arg},
+      {Lobby, name: Lobby}
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
