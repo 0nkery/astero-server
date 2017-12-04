@@ -11,7 +11,7 @@ defmodule Lobby.ConnectionSupervisor do
     Supervisor.start_child(@name, [{socket, ip, port}])
   end
 
-  def init(args) do
+  def init(_args) do
     Supervisor.init([Lobby.Connection], strategy: :simple_one_for_one)
   end
 end
