@@ -1,7 +1,7 @@
 require Logger
 
 defmodule Lobby.Connection do
-  use GenServer, restart: :temporary
+  use GenServer, restart: :transient
 
   def start_link(_opts, {socket, ip, port}) do
     conn_id = :rand.uniform(65536)
@@ -17,7 +17,7 @@ defmodule Lobby.Connection do
   end
 
   def init({_socket, ip, port, _conn_id} = state) do
-    Logger.info("Got new connection: #{inspect(ip)} #{inspect(port)}")
+    Logger.debug("Got new connection: #{inspect(ip)} #{inspect(port)}")
     {:ok, state}
   end
 
@@ -26,7 +26,7 @@ defmodule Lobby.Connection do
     {:noreply, state}
   end
 
-  def handle_cast({:packet, packet}, {socket, ip, port, conn_id} = state) do
+  def handle_cast({:packet, packet}, state) do
     parse_packet(state, packet)
     {:noreply, state}
   end
@@ -36,7 +36,7 @@ defmodule Lobby.Connection do
          <<0 :: size(16),
            name_length :: size(8),
            nickname :: binary - size(name_length)
-         >> = packet
+         >>
        ) do
     ack = <<
       0 :: size(16),
@@ -53,6 +53,7 @@ defmodule Lobby.Connection do
   end
 
   defp parse_packet(_state, unknown_message) do
-    IO.puts("Unknown message: #{unknown_message}")
+    Logger.debug("Unknown message: #{unknown_message}")
+    Process.exit(self(), :normal)
   end
 end
