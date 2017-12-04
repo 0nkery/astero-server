@@ -16,9 +16,9 @@ defmodule Lobby.UDP do
     {:ok, {}}
   end
 
-  def handle_info({:udp, socket, ip, port, data}, _state) do
+  def handle_info({:udp, socket, ip, port, data}, state) do
     Lobby.handle_packet(socket, ip, port, data)
-    {:noreply, _state}
+    {:noreply, state}
   end
 
   def handle_info(msg, state) do

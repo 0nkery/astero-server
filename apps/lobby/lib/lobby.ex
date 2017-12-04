@@ -34,9 +34,11 @@ defmodule Lobby do
     {:noreply, connections}
   end
 
-  def handle_cast({:broadcast, packet, {ip, port} = except}, connections) do
+  def handle_cast({:broadcast, packet, {_ip, _port} = except}, connections) do
     connections
-      |> Enum.filter(fn {{i, p}, _conn} -> i != ip and p != port end)
+      |> Enum.filter(fn {client, _conn} -> client != except end)
       |> Enum.each(fn {_client, conn} -> Lobby.Connection.send(conn, packet) end)
+
+    {:noreply, connections}
   end
 end
