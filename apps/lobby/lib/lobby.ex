@@ -11,6 +11,10 @@ defmodule Lobby do
     GenServer.cast(Lobby, {:packet, socket, ip, port, data})
   end
 
+  def broadcast(packet, except) do
+    GenServer.cast(Lobby, {:broadcast, packet, except})
+  end
+
   def init(:ok) do
     {:ok, %{}}
   end
@@ -28,5 +32,11 @@ defmodule Lobby do
     |> Lobby.Connection.process_packet(data)
 
     {:noreply, connections}
+  end
+
+  def handle_cast({:broadcast, packet, {ip, port} = except}, connections) do
+    connections
+      |> Enum.filter(fn {{i, p}, _conn} -> i != ip and p != port end)
+      |> Enum.each(fn {_client, conn} -> Lobby.Connection.send(conn, packet) end)
   end
 end
