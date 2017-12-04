@@ -32,12 +32,13 @@ defmodule Lobby.Connection do
   end
 
   defp parse_packet(
-         {_socket, ip, port, conn_id},
-         <<0 :: size(16),
-           name_length :: size(8),
-           nickname :: binary - size(name_length)
-         >>
-       ) do
+     {_socket, ip, port, conn_id},
+     <<0 :: size(16),
+       name_length :: size(8),
+       nickname :: binary - size(name_length)
+     >>
+   ) do
+
     ack = <<
       0 :: size(16),
       conn_id :: size(16)
