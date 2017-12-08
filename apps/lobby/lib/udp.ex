@@ -22,7 +22,7 @@ defmodule Lobby.UDP do
   end
 
   def handle_info(msg, state) do
-    IO.puts(inspect(msg))
+    Logger.debug("#{__MODULE__} got unexpected message: #{inspect(msg)}")
     {:noreply, state}
   end
 end
