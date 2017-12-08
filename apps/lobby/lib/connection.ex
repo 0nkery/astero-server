@@ -15,8 +15,8 @@ defmodule Lobby.Connection do
     GenServer.cast(conn, {:send, packet})
   end
 
-  def init({_socket, ip, port, _conn_id} = state) do
-    Logger.debug("Got new connection: #{inspect(ip)} #{inspect(port)}")
+  def init({_socket, ip, port, conn_id} = state) do
+    Logger.debug("Player joined: #{inspect(ip)} #{inspect(port)} #{conn_id}")
     {:ok, state}
   end
 
@@ -65,6 +65,7 @@ defmodule Lobby.Connection do
   end
 
   defp before_exit({_socket, ip, port, conn_id}) do
+    Logger.debug("Player left: #{inspect(ip)}, #{inspect(port)}, #{conn_id}")
     Lobby.player_left(conn_id, ip, port)
   end
 end

@@ -1,5 +1,5 @@
 defmodule LobbyTest.Helpers do
-  @server_address {0, 0, 0, 0, 0, 0, 0, 0}
+  @server_address {0, 0, 0, 0, 0, 0, 0, 1}
   @server_port 11111
 
   def send(socket, packet) do

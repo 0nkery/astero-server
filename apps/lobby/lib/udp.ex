@@ -4,7 +4,7 @@ defmodule Lobby.UDP do
   use GenServer
 
   @port 11111
-  @socket_options [:binary, :inet6, {:ip, {0, 0, 0, 0, 0, 0, 0, 0}}, {:ipv6_v6only, true}]
+  @socket_options [:binary, :inet6, {:ip, {0, 0, 0, 0, 0, 0, 0, 1}}, {:ipv6_v6only, true}]
 
   def start_link(opts \\ []) do
     GenServer.start_link(__MODULE__, :ok, opts)
