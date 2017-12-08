@@ -39,6 +39,8 @@ defmodule Lobby.Connection do
      >>
    ) do
 
+    Logger.debug("New player nickname: #{nickname}")
+
     ack = <<
       0 :: size(16),
       conn_id :: size(16)
