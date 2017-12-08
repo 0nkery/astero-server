@@ -7,8 +7,8 @@ defmodule Lobby.ConnectionSupervisor do
     Supervisor.start_link(__MODULE__, args, name: @name)
   end
 
-  def start_connection(socket, ip, port) do
-    Supervisor.start_child(@name, [{socket, ip, port}])
+  def start_connection(socket, ip, port, conn_id) do
+    Supervisor.start_child(@name, [{socket, ip, port, conn_id}])
   end
 
   def init(_args) do

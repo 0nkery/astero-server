@@ -3,8 +3,7 @@ require Logger
 defmodule Lobby.Connection do
   use GenServer, restart: :transient
 
-  def start_link(_opts, {socket, ip, port}) do
-    conn_id = :rand.uniform(65536)
+  def start_link(_opts, {socket, ip, port, conn_id}) do
     GenServer.start_link(__MODULE__, {socket, ip, port, conn_id})
   end
 
@@ -33,7 +32,8 @@ defmodule Lobby.Connection do
 
   defp parse_packet(
      {_socket, ip, port, conn_id},
-     <<0 :: size(16),
+     <<
+       0 :: size(16),
        name_length :: size(8),
        nickname :: binary - size(name_length)
      >>
@@ -41,22 +41,30 @@ defmodule Lobby.Connection do
 
     Logger.debug("New player nickname: #{nickname}")
 
-    ack = <<
-      0 :: size(16),
-      conn_id :: size(16)
-    >>
-    new_connection = <<
-      1 :: size(16),
-      conn_id :: size(16),
-      name_length :: size(8),
-      nickname :: binary - size(name_length)
-    >>
+    ack = Lobby.Msg.ack(conn_id)
     Lobby.Connection.send(self(), ack)
-    Lobby.broadcast(new_connection, {ip, port})
+
+    player_joined = Lobby.Msg.player_joined(conn_id, name_length, nickname)
+    Lobby.broadcast(player_joined, {ip, port})
   end
 
-  defp parse_packet(_state, unknown_message) do
-    Logger.debug("Unknown message: #{unknown_message}")
+  defp parse_packet(
+    state,
+    <<
+      1 :: size(16),
+    >>
+  ) do
+    before_exit(state)
     Process.exit(self(), :normal)
+  end
+
+  defp parse_packet(state, unknown_message) do
+    Logger.debug("Unknown message: #{unknown_message}")
+    before_exit(state)
+    Process.exit(self(), :normal)
+  end
+
+  defp before_exit({_socket, ip, port, conn_id}) do
+    Lobby.player_left(conn_id, ip, port)
   end
 end
