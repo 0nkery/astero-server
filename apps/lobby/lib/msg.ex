@@ -22,3 +22,20 @@ defmodule Lobby.Msg do
     >>
   end
 end
+
+defmodule Lobby.Msg.Client do
+  def join(nickname) do
+    name_length = byte_size(nickname)
+    <<
+      0 :: size(16),
+      name_length,
+      nickname :: binary - size(name_length)
+    >>
+  end
+
+  def leave() do
+    <<
+      1 :: size(16)
+    >>
+  end
+end

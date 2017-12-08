@@ -28,6 +28,8 @@ defmodule Lobby do
 
     new_conn_id = unless Map.has_key?(connections, client) do
       cur_conn_id + 1
+    else
+      cur_conn_id
     end
 
     connections = Map.put_new_lazy(connections, client, fn ->

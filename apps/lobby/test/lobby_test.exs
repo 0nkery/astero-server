@@ -1,13 +1,29 @@
+defmodule LobbyTest.Helpers do
+  @server_address {0, 0, 0, 0, 0, 0, 0, 0}
+  @server_port 11111
+
+  def send(socket, packet) do
+    :gen_udp.send(socket, @server_address, @server_port, packet)
+  end
+end
+
 defmodule LobbyTest do
   use ExUnit.Case
 
   @socket_options [:binary, :inet6, {:active, false}]
-  @server_address {0, 0, 0, 0, 0, 0, 0, 0}
-  @server_port 11111
 
   setup do
     {:ok, socket1} = :gen_udp.open(0, @socket_options)
     {:ok, socket2} = :gen_udp.open(0, @socket_options)
+
+    on_exit fn ->
+      leave = Lobby.Msg.Client.leave()
+      LobbyTest.Helpers.send(socket1, leave)
+      LobbyTest.Helpers.send(socket2, leave)
+      :gen_udp.close(socket1)
+      :gen_udp.close(socket2)
+    end
+
     %{
       first: %{socket: socket1, nickname: "test1"},
       second: %{socket: socket2, nickname: "test2"},
@@ -15,16 +31,15 @@ defmodule LobbyTest do
   end
 
   test "notifies other connections about the new one", clients do
-    name_length = byte_size(clients.first.nickname)
-    hello_packet = <<0 :: size(16), name_length, clients.first.nickname :: binary - size(name_length)>>
-    :gen_udp.send(clients.first.socket, @server_address, @server_port, hello_packet)
+    join = Lobby.Msg.Client.join(clients.first.nickname)
+    LobbyTest.Helpers.send(clients.first.socket, join)
 
     {:ok, {_, _, <<0 :: size(16), _ :: binary>>}} = :gen_udp.recv(clients.first.socket, 40)
 
-    name_length = byte_size(clients.second.nickname)
-    hello_packet = <<0 :: size(16), name_length, clients.second.nickname :: binary - size(name_length)>>
-    :gen_udp.send(clients.second.socket, @server_address, @server_port, hello_packet)
+    join = Lobby.Msg.Client.join(clients.second.nickname)
+    LobbyTest.Helpers.send(clients.second.socket, join)
 
+    name_length = byte_size(clients.second.nickname)
     {:ok, {_, _, <<0 :: size(16), id :: size(16)>>}} = :gen_udp.recv(clients.second.socket, 40)
     {:ok, {_, _,
       <<
@@ -46,9 +61,39 @@ defmodule LobbyTest do
     end)
 
     packet = "test"
-    :gen_udp.send(clients.first.socket, @server_address, @server_port, packet)
+    LobbyTest.Helpers.send(clients.first.socket, packet)
 
     data = Supervisor.count_children(Lobby.ConnectionSupervisor)
     assert data.active == 0
+  end
+
+  test "notifies other players when player left", clients do
+    join = Lobby.Msg.Client.join(clients.first.nickname)
+    LobbyTest.Helpers.send(clients.first.socket, join)
+    _ = :gen_udp.recv(clients.first.socket, 40)
+
+    join = Lobby.Msg.Client.join(clients.second.nickname)
+    LobbyTest.Helpers.send(clients.second.socket, join)
+
+    _ = :gen_udp.recv(clients.first.socket, 40)
+
+    {:ok, {_, _,
+      <<
+        0 :: size(16),
+        id :: size(16)
+      >>
+    }} = :gen_udp.recv(clients.second.socket, 40)
+
+    leave = Lobby.Msg.Client.leave()
+    LobbyTest.Helpers.send(clients.second.socket, leave)
+
+    {:ok, {_, _,
+      <<
+        2 :: size(16),
+        broadcasted_id :: size(16)
+      >>
+    }} = :gen_udp.recv(clients.first.socket, 40)
+
+    assert broadcasted_id == id
   end
 end
