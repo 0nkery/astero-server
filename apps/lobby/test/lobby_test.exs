@@ -66,7 +66,10 @@ defmodule LobbyTest do
     Lobby.Connection.handle_packet(conn, packet)
 
     receive do
-      {:DOWN, ^ref, :process, ^conn, :normal} -> assert true
+      {:DOWN, got_ref, :process, got_conn, :normal} ->
+        assert got_ref == ref
+        assert got_conn == conn
+
       _ -> assert false
     end
   end
