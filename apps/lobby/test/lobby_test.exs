@@ -55,16 +55,20 @@ defmodule LobbyTest do
   end
 
   test "closes on unknown messages", clients do
-    running_processes = Supervisor.which_children(Lobby.ConnectionSupervisor)
-    Enum.each(running_processes, fn {_id, child, _type, _modules} ->
-      Supervisor.terminate_child(Lobby.ConnectionSupervisor, child)
-    end)
+    {:ok, conn} = Lobby.ConnectionSupervisor.start_connection(
+      clients.first.socket,
+      {0, 0, 0, 0, 0, 0, 0, 1}, 60000,
+      100
+    )
+    ref = Process.monitor(conn)
 
     packet = "test"
-    LobbyTest.Helpers.send(clients.first.socket, packet)
+    Lobby.Connection.handle_packet(conn, packet)
 
-    data = Supervisor.count_children(Lobby.ConnectionSupervisor)
-    assert data.active == 0
+    receive do
+      {:DOWN, ^ref, :process, ^conn, :normal} -> assert true
+      _ -> assert false
+    end
   end
 
   test "notifies other players when player left", clients do
