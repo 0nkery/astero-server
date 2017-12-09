@@ -52,7 +52,7 @@ defmodule Lobby do
     end)
 
     conn = Map.get(connections, client)
-    Lobby.Connection.process_packet(conn, data)
+    Lobby.Connection.handle_packet(conn, data)
 
     {:noreply, %{lobby | conn_counter: new_conn_id, connections: connections}}
   end

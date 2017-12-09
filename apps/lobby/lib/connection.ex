@@ -30,7 +30,7 @@ defmodule Lobby.Connection do
     })
   end
 
-  def process_packet(conn, packet) do
+  def handle_packet(conn, packet) do
     GenServer.cast(conn, {:packet, packet})
   end
 
