@@ -21,6 +21,12 @@ defmodule Lobby.Msg do
       conn_id :: size(16)
     >>
   end
+
+  def heartbeat() do
+    <<
+      3 :: size(16)
+    >>
+  end
 end
 
 defmodule Lobby.Msg.Client do
@@ -36,6 +42,12 @@ defmodule Lobby.Msg.Client do
   def leave() do
     <<
       1 :: size(16)
+    >>
+  end
+
+  def heartbeat() do
+    <<
+      2 :: size(16)
     >>
   end
 end

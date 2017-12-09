@@ -9,8 +9,8 @@ defmodule Lobby.Connection.Player do
     :port,
     :conn_id,
     state: :new, # OR :joined
-    should_ping: false,
-    missed_heartbeats: 0
+    missed_heartbeats: 0,
+    heartbeat_timer: nil
   ]
 end
 
@@ -42,8 +42,32 @@ defmodule Lobby.Connection do
 
   def init(%Player{} = player) do
     Logger.debug("Player joined: #{inspect(player.ip)} #{inspect(player.port)} #{player.conn_id}")
-    {:ok, player}
+
+    heartbeat_timer = Process.send_after(self(), :heartbeat, 5000)
+
+    {:ok, %{player | heartbeat_timer: heartbeat_timer}}
   end
+
+  def handle_info(:heartbeat, %Player{missed_heartbeats: missed_heartbeats} = player)
+    when missed_heartbeats >= 4
+  do
+    close_connection(player)
+  end
+
+  def handle_info(:heartbeat, player) do
+    Lobby.Connection.send(self(), Lobby.Msg.heartbeat())
+    heartbeat_timer = Process.send_after(self(), :heartbeat, 5000)
+
+    {:noreply,
+      %{
+        player |
+          missed_heartbeats: player.missed_heartbeats + 1,
+          heartbeat_timer: heartbeat_timer
+      }
+    }
+  end
+
+  def handle_info({:cancel_timer, _, _}, player), do: {:noreply, player}
 
   def handle_cast({:send, packet}, player) do
     :gen_udp.send(player.socket, player.ip, player.port, packet)
@@ -52,7 +76,11 @@ defmodule Lobby.Connection do
 
   def handle_cast({:packet, packet}, player) do
     player = parse_packet(player, packet)
-    {:noreply, player}
+
+    Process.cancel_timer(player.heartbeat_timer, async: true)
+    heartbeat_timer = Process.send_after(self(), :ping, 5000)
+
+    {:noreply, %{player | heartbeat_timer: heartbeat_timer, missed_heartbeats: 0}}
   end
 
   defp parse_packet(
