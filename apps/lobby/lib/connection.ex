@@ -41,7 +41,6 @@ defmodule Lobby.Connection do
 
   def init(%Player{} = player) do
     Logger.debug("Player joined: #{inspect(player.ip)} #{inspect(player.port)} #{player.conn_id}")
-    Process.send_after(self(), :ping, 5000)
     {:ok, player}
   end
 
