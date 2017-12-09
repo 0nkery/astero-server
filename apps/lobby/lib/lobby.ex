@@ -57,16 +57,16 @@ defmodule Lobby do
     {:noreply, %{lobby | conn_counter: new_conn_id, connections: connections}}
   end
 
-  def handle_cast({:broadcast, packet, except}, lobby) do
-    lobby.connections
-      |> Enum.filter(fn {client, _conn} -> client != except end)
-      |> do_broadcast(packet)
+  def handle_cast({:broadcast, packet, nil}, lobby) do
+    do_broadcast(lobby.connections, packet)
 
     {:noreply, lobby}
   end
 
-  def handle_cast({:broadcast, packet, nil}, lobby) do
-    do_broadcast(lobby.connections, packet)
+  def handle_cast({:broadcast, packet, except}, lobby) do
+    lobby.connections
+      |> Enum.filter(fn {client, _conn} -> client != except end)
+      |> do_broadcast(packet)
 
     {:noreply, lobby}
   end
