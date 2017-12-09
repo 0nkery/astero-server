@@ -1,7 +1,18 @@
 require Logger
 
+defmodule Lobby.State do
+  defstruct [
+    connections: %{},
+    conn_counter: 0
+  ]
+end
+
 defmodule Lobby do
   use GenServer
+
+  alias Lobby.State
+
+  # Client
 
   def start_link(opts \\ []) do
     GenServer.start_link(__MODULE__, :ok, opts)
@@ -19,51 +30,53 @@ defmodule Lobby do
     GenServer.cast(Lobby, {:player_left, conn_id, ip, port})
   end
 
+  # Server
+
   def init(:ok) do
-    {:ok, {%{}, 0}}
+    {:ok, %State{}}
   end
 
-  def handle_cast({:packet, socket, ip, port, data}, {connections, cur_conn_id}) do
+  def handle_cast({:packet, socket, ip, port, data}, lobby) do
     client = {ip, port}
 
-    new_conn_id = unless Map.has_key?(connections, client) do
-      cur_conn_id + 1
+    new_conn_id = unless Map.has_key?(lobby.connections, client) do
+      lobby.conn_counter + 1
     else
-      cur_conn_id
+      lobby.conn_counter
     end
 
-    connections = Map.put_new_lazy(connections, client, fn ->
-      {:ok, conn} = Lobby.ConnectionSupervisor.start_connection(socket, ip, port, cur_conn_id)
+    connections = Map.put_new_lazy(lobby.connections, client, fn ->
+      {:ok, conn} = Lobby.ConnectionSupervisor.start_connection(socket, ip, port, lobby.conn_counter)
+
       conn
     end)
 
-    connections
-    |> Map.get(client)
-    |> Lobby.Connection.process_packet(data)
+    conn = Map.get(connections, client)
+    Lobby.Connection.process_packet(conn, data)
 
-    {:noreply, {connections, new_conn_id}}
+    {:noreply, %{lobby | conn_counter: new_conn_id, connections: connections}}
   end
 
-  def handle_cast({:broadcast, packet, except}, {connections, cur_conn_id}) do
-    connections
+  def handle_cast({:broadcast, packet, except}, lobby) do
+    lobby.connections
       |> Enum.filter(fn {client, _conn} -> client != except end)
       |> do_broadcast(packet)
 
-    {:noreply, {connections, cur_conn_id}}
+    {:noreply, lobby}
   end
 
-  def handle_cast({:broadcast, packet, nil}, {connections, cur_conn_id}) do
-    do_broadcast(connections, packet)
+  def handle_cast({:broadcast, packet, nil}, lobby) do
+    do_broadcast(lobby.connections, packet)
 
-    {:noreply, {connections, cur_conn_id}}
+    {:noreply, lobby}
   end
 
-  def handle_cast({:player_left, conn_id, ip, port}, {connections, cur_conn_id}) do
-    {_conn, connections} = Map.pop(connections, {ip, port})
+  def handle_cast({:player_left, conn_id, ip, port}, lobby) do
+    {_conn, connections} = Map.pop(lobby.connections, {ip, port})
     player_left = Lobby.Msg.player_left(conn_id)
     Lobby.broadcast(player_left)
 
-    {:noreply, {connections, cur_conn_id}}
+    {:noreply, %{lobby | connections: connections}}
   end
 
   defp do_broadcast(connections, packet) do
