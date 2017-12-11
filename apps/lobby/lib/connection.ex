@@ -114,6 +114,8 @@ defmodule Lobby.Connection do
     player
   end
 
+  defp parse_packet(player, <<2 :: size(16)>>), do: player
+
   defp parse_packet(%Player{state: state} = player, _unknown_msg) do
     notify = case state do
       :new -> false
