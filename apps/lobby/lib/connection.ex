@@ -43,44 +43,49 @@ defmodule Lobby.Connection do
   def init(%Player{} = player) do
     Logger.debug("Player joined: #{inspect(player.ip)} #{inspect(player.port)} #{player.conn_id}")
 
-    heartbeat_timer = Process.send_after(self(), :heartbeat, 5000)
+    heartbeat_timer = schedule_ping()
 
     {:ok, %{player | heartbeat_timer: heartbeat_timer}}
   end
 
-  def handle_info(:heartbeat, %Player{missed_heartbeats: missed_heartbeats} = player)
-    when missed_heartbeats >= 4
-  do
-    close_connection(player)
+  def handle_info(msg, %Player{missed_heartbeats: missed_heartbeats} = player) do
+    max_missed_heartbeats = Application.get_env(:lobby, :max_missed_heartbeats)
+
+    case msg do
+      :heartbeat when missed_heartbeats >= max_missed_heartbeats ->
+        Logger.debug("Player is not responding: #{inspect player}")
+        {:noreply, close_connection(player)}
+
+      :heartbeat ->
+        Lobby.Connection.send(self(), Lobby.Msg.heartbeat())
+        heartbeat_timer = schedule_ping()
+
+        {:noreply,
+          %{
+            player |
+            missed_heartbeats: player.missed_heartbeats + 1,
+            heartbeat_timer: heartbeat_timer
+          }
+        }
+
+      {:cancel_timer, _, _} -> {:noreply, player}
+    end
   end
 
-  def handle_info(:heartbeat, player) do
-    Lobby.Connection.send(self(), Lobby.Msg.heartbeat())
-    heartbeat_timer = Process.send_after(self(), :heartbeat, 5000)
+  def handle_cast(msg, player) do
+    case msg do
+      {:send, packet} ->
+        :gen_udp.send(player.socket, player.ip, player.port, packet)
+        {:noreply, player}
 
-    {:noreply,
-      %{
-        player |
-          missed_heartbeats: player.missed_heartbeats + 1,
-          heartbeat_timer: heartbeat_timer
-      }
-    }
-  end
+      {:packet, packet} ->
+        player = parse_packet(player, packet)
 
-  def handle_info({:cancel_timer, _, _}, player), do: {:noreply, player}
+        Process.cancel_timer(player.heartbeat_timer, async: true)
+        heartbeat_timer = schedule_ping()
 
-  def handle_cast({:send, packet}, player) do
-    :gen_udp.send(player.socket, player.ip, player.port, packet)
-    {:noreply, player}
-  end
-
-  def handle_cast({:packet, packet}, player) do
-    player = parse_packet(player, packet)
-
-    Process.cancel_timer(player.heartbeat_timer, async: true)
-    heartbeat_timer = Process.send_after(self(), :ping, 5000)
-
-    {:noreply, %{player | heartbeat_timer: heartbeat_timer, missed_heartbeats: 0}}
+        {:noreply, %{player | heartbeat_timer: heartbeat_timer, missed_heartbeats: 0}}
+    end
   end
 
   defp parse_packet(
@@ -134,5 +139,9 @@ defmodule Lobby.Connection do
     end
 
     Process.exit(self(), :normal)
+  end
+
+  defp schedule_ping() do
+    Process.send_after(self(), :heartbeat, Application.get_env(:lobby, :heartbeat_interval))
   end
 end
