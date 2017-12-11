@@ -38,6 +38,7 @@ defmodule Lobby do
   # Server
 
   def init(:ok) do
+    Logger.info("Started #{__MODULE__}")
     {:ok, %State{}}
   end
 
