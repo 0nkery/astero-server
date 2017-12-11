@@ -41,11 +41,7 @@ defmodule Lobby.Connection do
   # Server
 
   def init(%Player{} = player) do
-    Logger.debug("Player joined: #{inspect(player.ip)} #{inspect(player.port)} #{player.conn_id}")
-
-    heartbeat_timer = schedule_ping()
-
-    {:ok, %{player | heartbeat_timer: heartbeat_timer}}
+    {:ok, player}
   end
 
   def handle_info(msg, %Player{missed_heartbeats: missed_heartbeats} = player) do
@@ -97,7 +93,7 @@ defmodule Lobby.Connection do
      >>
    ) do
 
-    Logger.debug("New player nickname: #{nickname}")
+    Logger.debug("Player joined: #{inspect(player.port)} #{player.conn_id} #{nickname}")
 
     ack = Lobby.Msg.ack(player.conn_id)
     Lobby.Connection.send(self(), ack)
@@ -105,7 +101,9 @@ defmodule Lobby.Connection do
     player_joined = Lobby.Msg.player_joined(player.conn_id, name_length, nickname)
     Lobby.broadcast(player_joined, {player.ip, player.port})
 
-    %{player | state: :joined}
+    heartbeat_timer = schedule_ping()
+
+    %{player | state: :joined, heartbeat_timer: heartbeat_timer}
   end
 
   defp parse_packet(
@@ -134,7 +132,7 @@ defmodule Lobby.Connection do
 
   defp close_connection(player, notify \\ true) do
     if notify do
-      Logger.debug("Player left: #{inspect(player.ip)}, #{inspect(player.port)}, #{player.conn_id}")
+      Logger.debug("Player left: #{inspect(player.port)} #{player.conn_id}")
       Lobby.player_left(player.conn_id, player.ip, player.port)
     end
 
