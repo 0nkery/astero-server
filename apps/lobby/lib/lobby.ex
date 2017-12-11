@@ -30,10 +30,19 @@ defmodule Lobby do
     GenServer.cast(Lobby, {:player_left, conn_id, ip, port})
   end
 
+  # for testing purposes
+  def clean() do
+    GenServer.call(Lobby, :clean)
+  end
+
   # Server
 
   def init(:ok) do
     {:ok, %State{}}
+  end
+
+  def handle_call(:clean, _from, _lobby) do
+    {:reply, :ok, %State{}}
   end
 
   def handle_cast({:packet, socket, ip, port, data}, lobby) do
