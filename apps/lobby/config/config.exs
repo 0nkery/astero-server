@@ -28,3 +28,9 @@ use Mix.Config
 # here (which is why it is important to import them last).
 #
 #     import_config "#{Mix.env}.exs"
+
+config :lobby,
+  heartbeat_interval: 5000,
+  max_missed_heartbeats: 4
+
+import_config "config.#{Mix.env}.exs"
