@@ -6,12 +6,13 @@ defmodule Lobby.Msg do
     >>
   end
 
-  def player_joined(conn_id, nickname_length, nickname) do
+  def player_joined(conn_id, nickname) do
+    nickname_len = byte_size(nickname)
     <<
       1 :: size(16),
       conn_id :: size(16),
-      nickname_length :: size(8),
-      nickname :: binary - size(nickname_length)
+      nickname_len :: size(8),
+      nickname :: binary - size(nickname_len)
     >>
   end
 
@@ -27,6 +28,26 @@ defmodule Lobby.Msg do
       3 :: size(16)
     >>
   end
+end
+
+defmodule Lobby.Msg.Incoming do
+  def parse(<<
+    0 :: size(16),
+    name_length :: size(8),
+    nickname :: binary - size(name_length)
+  >>) do
+    {:join, nickname}
+  end
+
+  def parse(<<1 :: size(16)>>) do
+    {:leave}
+  end
+
+  def parse(<<2 :: size(16)>>) do
+    {:heartbeat}
+  end
+
+  def parse(_unknown), do: {:unknown}
 end
 
 defmodule Lobby.Msg.Client do

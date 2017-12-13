@@ -75,7 +75,8 @@ defmodule Lobby.Connection do
         {:noreply, player}
 
       {:packet, packet} ->
-        player = parse_packet(player, packet)
+        parsed_packet = Lobby.Msg.Incoming.parse(packet)
+        player = handle(player, parsed_packet)
 
         Process.cancel_timer(player.heartbeat_timer, async: true)
         heartbeat_timer = schedule_ping()
@@ -84,21 +85,13 @@ defmodule Lobby.Connection do
     end
   end
 
-  defp parse_packet(
-     %Player{state: :new} = player,
-     <<
-       0 :: size(16),
-       name_length :: size(8),
-       nickname :: binary - size(name_length)
-     >>
-   ) do
-
+  defp handle(%Player{state: :new} = player, {:join, nickname}) do
     Logger.debug("Player joined: #{inspect(player.port)} #{player.conn_id} #{nickname}")
-
+    # TODO: send everything to Sector
     ack = Lobby.Msg.ack(player.conn_id)
     Lobby.Connection.send(self(), ack)
 
-    player_joined = Lobby.Msg.player_joined(player.conn_id, name_length, nickname)
+    player_joined = Lobby.Msg.player_joined(player.conn_id, nickname)
     Lobby.broadcast(player_joined, {player.ip, player.port})
 
     heartbeat_timer = schedule_ping()
@@ -106,25 +99,16 @@ defmodule Lobby.Connection do
     %{player | state: :joined, heartbeat_timer: heartbeat_timer}
   end
 
-  defp parse_packet(
-    %Player{state: :joined} = player,
-    <<
-      1 :: size(16),
-    >>
-  ) do
+  defp handle(%Player{state: :joined} = player, {:leave}) do
     close_connection(player)
 
     player
   end
 
-  defp parse_packet(player, <<2 :: size(16)>>), do: player
+  defp handle(player, {:heartbeat}), do: player
 
-  defp parse_packet(%Player{state: state} = player, _unknown_msg) do
-    notify = case state do
-      :new -> false
-      :joined -> true
-    end
-
+  defp handle(%Player{state: state} = player, {:unknown}) do
+    notify = state == :joined
     close_connection(player, notify)
 
     player
