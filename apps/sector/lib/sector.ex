@@ -31,8 +31,8 @@ defmodule Sector do
   def handle_cast(msg, state) do
     case msg do
       {:joined, conn, player_id, nickname} ->
-        x = :rand.uniform(800)
-        y = :rand.uniform(600)
+        x = :rand.uniform(400) - 400
+        y = :rand.uniform(300) - 300
 
         ack = Lobby.Msg.ack(player_id, {x, y})
         Lobby.Connection.send(conn, ack)
