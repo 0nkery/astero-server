@@ -31,14 +31,14 @@ defmodule Sector do
   def handle_cast(msg, state) do
     case msg do
       {:joined, conn, player_id, nickname} ->
-        # TODO: assign coordinates
+        x = :rand.uniform(800)
+        y = :rand.uniform(600)
 
-        ack = Lobby.Msg.ack(player_id)
+        ack = Lobby.Msg.ack(player_id, {x, y})
         Lobby.Connection.send(conn, ack)
 
-        player_joined = Lobby.Msg.player_joined(player_id, nickname)
-        except = conn
-        Lobby.broadcast(player_joined, except)
+        player_joined = Lobby.Msg.player_joined(player_id, nickname, {x, y})
+        Lobby.broadcast(player_joined, conn)
 
         {:noreply, state}
 
