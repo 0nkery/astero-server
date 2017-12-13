@@ -85,33 +85,30 @@ defmodule Lobby.Connection do
     end
   end
 
-  defp handle(%Player{state: :new} = player, {:join, nickname}) do
-    Logger.debug("Player joined: #{inspect(player.port)} #{player.conn_id} #{nickname}")
-    # TODO: send everything to Sector
-    ack = Lobby.Msg.ack(player.conn_id)
-    Lobby.Connection.send(self(), ack)
+  defp handle(%Player{state: state} = player, msg) do
+    case msg do
+      {:join, nickname} when state == :new ->
+        Logger.debug("Player joined: #{inspect(player.port)} #{player.conn_id} #{nickname}")
 
-    player_joined = Lobby.Msg.player_joined(player.conn_id, nickname)
-    Lobby.broadcast(player_joined, {player.ip, player.port})
+        Sector.player_joined(self(), player.conn_id, nickname)
 
-    heartbeat_timer = schedule_ping()
+        heartbeat_timer = schedule_ping()
 
-    %{player | state: :joined, heartbeat_timer: heartbeat_timer}
-  end
+        %{player | state: :joined, heartbeat_timer: heartbeat_timer}
 
-  defp handle(%Player{state: :joined} = player, {:leave}) do
-    close_connection(player)
+      {:leave} when state == :joined ->
+        close_connection(player)
 
-    player
-  end
+        player
 
-  defp handle(player, {:heartbeat}), do: player
+      {:heartbeat} -> player
 
-  defp handle(%Player{state: state} = player, {:unknown}) do
-    notify = state == :joined
-    close_connection(player, notify)
+      {:unknown} ->
+        notify = state == :joined
+        close_connection(player, notify)
 
-    player
+        player
+    end
   end
 
   defp close_connection(player, notify \\ true) do
