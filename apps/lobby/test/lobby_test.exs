@@ -1,10 +1,60 @@
 require Logger
 
+defmodule LobbyTest.Helpers.ClientMsg do
+  def join(nickname) do
+    name_length = byte_size(nickname)
+    <<
+      0 :: size(16),
+      name_length,
+      nickname :: binary - size(name_length)
+    >>
+  end
+
+  def leave() do
+    <<
+      1 :: size(16)
+    >>
+  end
+
+  def heartbeat() do
+    <<
+      2 :: size(16)
+    >>
+  end
+end
+
+defmodule LobbyTest.Helpers.ServerMsg do
+  def parse(<<
+    0 :: size(16),
+    id :: size(16),
+    _ :: binary
+  >>) do
+    {:ack, id}
+  end
+
+  def parse(<<
+    1 :: size(16),
+    id :: size(16),
+    name_len :: size(8),
+    nickname :: binary - size(name_len),
+    _ :: binary
+  >>) do
+    {:joined, id, nickname}
+  end
+
+  def parse(<<2 :: size(16), id :: size(16)>>), do: {:left, id}
+
+  def parse(<<3 :: size(16)>>), do: {:heartbeat}
+end
+
 defmodule LobbyTest.Helpers do
   @server_address {0, 0, 0, 0, 0, 0, 0, 1}
   @server_port 11111
 
-  def send(socket, packet) do
+  alias LobbyTest.Helpers.ClientMsg
+  alias LobbyTest.Helpers.ServerMsg
+
+  def send_to_server(socket, packet) do
     :gen_udp.send(socket, @server_address, @server_port, packet)
   end
 
@@ -20,15 +70,17 @@ defmodule LobbyTest.Helpers do
   end
 
   def connect(clients) do
-    join = Lobby.Msg.Client.join(clients.first.nickname)
-    LobbyTest.Helpers.send(clients.first.socket, join)
+    join = ClientMsg.join(clients.first.nickname)
+    send_to_server(clients.first.socket, join)
 
-    {:ok, {_, _, <<0 :: size(16), first_id :: size(16)>>}} = :gen_udp.recv(clients.first.socket, 40)
+    {:ok, {_, _, packet}} = :gen_udp.recv(clients.first.socket, 40)
+    {:ack, first_id} = ServerMsg.parse(packet)
 
-    join = Lobby.Msg.Client.join(clients.second.nickname)
-    LobbyTest.Helpers.send(clients.second.socket, join)
+    join = ClientMsg.join(clients.second.nickname)
+    send_to_server(clients.second.socket, join)
 
-    {:ok, {_, _, <<0 :: size(16), second_id :: size(16)>>}} = :gen_udp.recv(clients.second.socket, 40)
+    {:ok, {_, _, packet}} = :gen_udp.recv(clients.second.socket, 40)
+    {:ack, second_id} = ServerMsg.parse(packet)
 
     {first_id, second_id}
   end
@@ -42,6 +94,8 @@ defmodule LobbyTest do
   use ExUnit.Case
 
   alias LobbyTest.Helpers
+  alias LobbyTest.Helpers.ClientMsg
+  alias LobbyTest.Helpers.ServerMsg
 
   @socket_options [:binary, :inet6, {:active, false}]
 
@@ -67,15 +121,8 @@ defmodule LobbyTest do
   test "notifies other connections about the new one", clients do
     {_first_id, second_id} = Helpers.connect(clients)
 
-    name_length = byte_size(clients.second.nickname)
-    {:ok, {_, _,
-      <<
-        1 :: size(16),
-        ^second_id :: size(16),
-        5,
-        broadcasted_nickname :: binary - size(name_length)
-      >>
-    }} = :gen_udp.recv(clients.first.socket, 40)
+    {:ok, {_, _, packet}} = :gen_udp.recv(clients.first.socket, 40)
+    {:joined, ^second_id, broadcasted_nickname} = ServerMsg.parse(packet)
 
     assert broadcasted_nickname == clients.second.nickname
   end
@@ -105,15 +152,11 @@ defmodule LobbyTest do
 
     Helpers.skip_join_notification(clients.first.socket, second_id)
 
-    leave = Lobby.Msg.Client.leave()
-    Helpers.send(clients.second.socket, leave)
+    leave = ClientMsg.leave()
+    Helpers.send_to_server(clients.second.socket, leave)
 
-    {:ok, {_, _,
-      <<
-        2 :: size(16),
-        ^second_id :: size(16)
-      >>
-    }} = :gen_udp.recv(clients.first.socket, 40)
+    {:ok, {_, _, packet}} = :gen_udp.recv(clients.first.socket, 40)
+    {:left, ^second_id} = ServerMsg.parse(packet)
   end
 
   test "heartbeats", clients do
@@ -121,17 +164,16 @@ defmodule LobbyTest do
 
     _ = :gen_udp.recv(clients.first.socket, 40)
 
-    heartbeat = Lobby.Msg.Client.heartbeat()
+    heartbeat = ClientMsg.heartbeat()
 
     assert Helpers.recv_until(clients.first.socket, 10, 6000, fn data ->
-      case data do
-        {:ok, {_, _, <<3 :: size(16)>>}} ->
-          Helpers.send(clients.first.socket, heartbeat)
+      {:ok, {_, _, packet}} = data
+      case ServerMsg.parse(packet) do
+        {:heartbeat} ->
+          Helpers.send_to_server(clients.first.socket, heartbeat)
           false
-        {:ok, {_, _, <<2 :: size(16), ^second_id :: size(16)>>}} ->
-          true
-        {:ok, {_, _, <<2 :: size(16), _ :: size(16)>>}} ->
-          false
+        {:left, ^second_id} -> true
+        {:left, _} -> false
       end
     end)
   end

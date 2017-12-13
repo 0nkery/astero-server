@@ -1,18 +1,23 @@
 defmodule Lobby.Msg do
-  def ack(conn_id) do
+  def ack(conn_id, {x, y}) do
     <<
       0 :: size(16),
-      conn_id :: size(16)
+      conn_id :: size(16),
+      x :: size(16),
+      y :: size(16),
     >>
   end
 
-  def player_joined(conn_id, nickname) do
+  def player_joined(conn_id, nickname, {x, y}) do
     nickname_len = byte_size(nickname)
+
     <<
       1 :: size(16),
       conn_id :: size(16),
       nickname_len :: size(8),
-      nickname :: binary - size(nickname_len)
+      nickname :: binary - size(nickname_len),
+      x :: size(16),
+      y :: size(16),
     >>
   end
 
@@ -48,27 +53,4 @@ defmodule Lobby.Msg.Incoming do
   end
 
   def parse(_unknown), do: {:unknown}
-end
-
-defmodule Lobby.Msg.Client do
-  def join(nickname) do
-    name_length = byte_size(nickname)
-    <<
-      0 :: size(16),
-      name_length,
-      nickname :: binary - size(name_length)
-    >>
-  end
-
-  def leave() do
-    <<
-      1 :: size(16)
-    >>
-  end
-
-  def heartbeat() do
-    <<
-      2 :: size(16)
-    >>
-  end
 end
