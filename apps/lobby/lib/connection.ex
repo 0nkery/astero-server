@@ -114,7 +114,7 @@ defmodule Lobby.Connection do
   defp close_connection(player, notify \\ true) do
     if notify do
       Logger.debug("Player left: #{inspect(player.port)} #{player.conn_id}")
-      Lobby.player_left(player.conn_id, player.ip, player.port)
+      Sector.player_left(self(), player.conn_id)
     end
 
     Process.exit(self(), :normal)

@@ -18,6 +18,10 @@ defmodule Sector do
     GenServer.cast(Sector, {:joined, conn, player_id, nickname})
   end
 
+  def player_left(conn, player_id) do
+    GenServer.cast(Sector, {:left, conn, player_id})
+  end
+
   # Server
   def init(:ok) do
     Logger.info("Started #{__MODULE__}")
@@ -35,6 +39,12 @@ defmodule Sector do
         player_joined = Lobby.Msg.player_joined(player_id, nickname)
         except = conn
         Lobby.broadcast(player_joined, except)
+
+        {:noreply, state}
+
+      {:left, conn, player_id} ->
+        player_left = Lobby.Msg.player_left(player_id)
+        Lobby.broadcast(player_left, conn)
 
         {:noreply, state}
     end
