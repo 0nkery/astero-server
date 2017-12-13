@@ -75,7 +75,7 @@ defmodule Lobby do
 
   def handle_cast({:broadcast, packet, except}, lobby) do
     lobby.connections
-      |> Enum.filter(fn {client, _conn} -> client != except end)
+      |> Enum.filter(fn {_client, conn} -> conn != except end)
       |> do_broadcast(packet)
 
     {:noreply, lobby}
