@@ -50,6 +50,11 @@ defmodule Sector do
         player_joined = Lobby.Msg.player_joined(player_id, nickname, coord)
         Lobby.broadcast(player_joined, conn)
 
+        Enum.each(state.players, fn {id, player} ->
+          older_player_joined = Lobby.Msg.player_joined(id, player.nickname, player.coordinate)
+          Lobby.Connection.send(conn, older_player_joined)
+        end)
+
         player = %Player{
           conn: conn,
           nickname: nickname,
