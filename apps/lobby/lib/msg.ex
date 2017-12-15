@@ -33,6 +33,22 @@ defmodule Lobby.Msg do
       3 :: size(16)
     >>
   end
+
+  def asteroid(id, asteroid_data) do
+    <<
+      4 :: size(16),
+      id :: size(16),
+      asteroid_data :: binary
+    >>
+  end
+
+  def composition(messages) do
+    composed = for msg <- messages, into: <<>>, do: <<byte_size(msg) :: size(16)>> <> msg
+    <<
+      5 :: size(16),
+      composed :: binary
+    >>
+  end
 end
 
 defmodule Lobby.Msg.Incoming do
