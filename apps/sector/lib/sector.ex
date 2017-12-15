@@ -1,7 +1,7 @@
 require Logger
 
 defmodule Sector.State do
-  defstruct players: %{}
+  defstruct players: %{}, asteroids: %{}
 end
 
 defmodule Sector.Player do
@@ -19,6 +19,10 @@ defmodule Sector do
 
   alias Sector.State
   alias Sector.Player
+  alias Sector.Asteroid
+
+  @initial_asteroids_count 5
+  @max_asteroids_count 10
 
   # Client
   def start_link(opts \\ []) do
@@ -36,7 +40,11 @@ defmodule Sector do
   # Server
   def init(:ok) do
     Logger.info("Started #{__MODULE__}")
-    {:ok, %State{}}
+
+    asteroids = Asteroid.create_asteroids(@initial_asteroids_count, 100.0, 250.0)
+    asteroids = Map.new(Enum.zip(1..@initial_asteroids_count, asteroids))
+
+    {:ok, %State{asteroids: asteroids}}
   end
 
   def handle_cast(msg, state) do
@@ -50,10 +58,17 @@ defmodule Sector do
         player_joined = Lobby.Msg.player_joined(player_id, nickname, coord)
         Lobby.broadcast(player_joined, conn)
 
-        Enum.each(state.players, fn {id, player} ->
-          older_player_joined = Lobby.Msg.player_joined(id, player.nickname, player.coordinate)
-          Lobby.Connection.send(conn, older_player_joined)
-        end)
+        older_players = for {id, player} <- state.players do
+          Lobby.Msg.player_joined(id, player.nickname, player.coordinate)
+        end
+        older_players = Lobby.Msg.composition(older_players)
+        Lobby.Connection.send(conn, older_players)
+
+        spawn_asteroids = for {id, asteroid} <- state.asteroids do
+          Lobby.Msg.asteroid(id, Asteroid.to_binary(asteroid))
+        end
+        spawn_asteroids = Lobby.Msg.composition(spawn_asteroids)
+        Lobby.Connection.send(conn, spawn_asteroids)
 
         player = %Player{
           conn: conn,
