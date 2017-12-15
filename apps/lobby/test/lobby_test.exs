@@ -45,6 +45,32 @@ defmodule LobbyTest.Helpers.ServerMsg do
   def parse(<<2 :: size(16), id :: size(16)>>), do: {:left, id}
 
   def parse(<<3 :: size(16)>>), do: {:heartbeat}
+
+  def parse(<<
+    4 :: size(16),
+    _ :: binary,
+  >>) do
+    {:asteroid}
+  end
+
+  def parse(<<
+    5 :: size(16),
+    composition :: binary
+  >>) do
+    parse_composition(composition)
+  end
+
+  defp parse_composition(<<
+    size :: size(16),
+    msg :: binary - size(size),
+    rest :: binary,
+  >>) do
+    [parse(msg) | parse_composition(rest)]
+  end
+
+  defp parse_composition(<<>>) do
+    []
+  end
 end
 
 defmodule LobbyTest.Helpers do
@@ -95,10 +121,6 @@ defmodule LobbyTest.Helpers do
     leave = ClientMsg.leave()
     send_to_server(client.socket, leave)
   end
-
-  def skip_join_notification(socket, joined_player_id) do
-    {:ok, {_, _, <<1 :: size(16), ^joined_player_id :: size(16), _ :: binary>>}} = :gen_udp.recv(socket, 40)
-  end
 end
 
 defmodule LobbyTest do
@@ -106,7 +128,6 @@ defmodule LobbyTest do
 
   alias LobbyTest.Helpers
   alias LobbyTest.Helpers.ClientMsg
-  alias LobbyTest.Helpers.ServerMsg
 
   @socket_options [:binary, :inet6, {:active, false}]
 
@@ -139,10 +160,16 @@ defmodule LobbyTest do
       end
     end)
 
-    {:ok, {_, _, packet}} = :gen_udp.recv(clients.second.socket, 40)
-    {:joined, ^first_id, broadcasted_nickname} = ServerMsg.parse(packet)
+    assert Helpers.recv_until(clients.second.socket, 5, 1000, fn data ->
+      case data do
+        older_players when is_list(older_players) ->
+          Enum.any?(older_players, fn {:joined, id, nickname} ->
+            id == first_id and nickname == clients.first.nickname
+          end)
 
-    assert broadcasted_nickname == clients.first.nickname
+        _ -> false
+      end
+    end)
 
     Helpers.disconnect(clients.first)
     Helpers.disconnect(clients.second)
@@ -171,12 +198,14 @@ defmodule LobbyTest do
   test "notifies other players when player left", clients do
     {_first_id, second_id} = Helpers.connect(clients)
 
-    Helpers.skip_join_notification(clients.first.socket, second_id)
-
     Helpers.disconnect(clients.second)
 
-    {:ok, {_, _, packet}} = :gen_udp.recv(clients.first.socket, 40)
-    {:left, ^second_id} = ServerMsg.parse(packet)
+    assert Helpers.recv_until(clients.first.socket, 5, 500, fn data ->
+      case data do
+        {:left, ^second_id} -> true
+        _ -> false
+      end
+    end)
 
     Helpers.disconnect(clients.first)
   end
