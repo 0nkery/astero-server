@@ -62,10 +62,11 @@ defmodule LobbyTest.Helpers do
     data = :gen_udp.recv(socket, 40, timeout)
     check_result = check.(data)
 
-    cond do
-      max_attempts == 0 -> false
-      check_result == true -> true
-      check_result == false -> recv_until(socket, max_attempts - 1, timeout, check)
+    case check_result do
+      _ when max_attempts == 0 -> false
+      true -> true
+      {true, data} -> {true, data}
+      false -> recv_until(socket, max_attempts - 1, timeout, check)
     end
   end
 
@@ -73,8 +74,13 @@ defmodule LobbyTest.Helpers do
     join = ClientMsg.join(clients.first.nickname)
     send_to_server(clients.first.socket, join)
 
-    {:ok, {_, _, packet}} = :gen_udp.recv(clients.first.socket, 40)
-    {:ack, first_id} = ServerMsg.parse(packet)
+    {true, first_id} = recv_until(clients.first.socket, 5, 500, fn data ->
+      {:ok, {_, _, packet}} = data
+      case ServerMsg.parse(packet) do
+        {:ack, first_id} -> {true, first_id}
+        _ -> false
+      end
+    end)
 
     join = ClientMsg.join(clients.second.nickname)
     send_to_server(clients.second.socket, join)
@@ -83,6 +89,11 @@ defmodule LobbyTest.Helpers do
     {:ack, second_id} = ServerMsg.parse(packet)
 
     {first_id, second_id}
+  end
+
+  def disconnect(client) do
+    leave = ClientMsg.leave()
+    send_to_server(client.socket, leave)
   end
 
   def skip_join_notification(socket, joined_player_id) do
@@ -100,8 +111,6 @@ defmodule LobbyTest do
   @socket_options [:binary, :inet6, {:active, false}]
 
   setup do
-    :ok = Lobby.clean()
-
     {:ok, socket1} = :gen_udp.open(0, @socket_options)
     {:ok, socket2} = :gen_udp.open(0, @socket_options)
 
@@ -121,10 +130,18 @@ defmodule LobbyTest do
   test "notifies other connections about the new one", clients do
     {_first_id, second_id} = Helpers.connect(clients)
 
-    {:ok, {_, _, packet}} = :gen_udp.recv(clients.first.socket, 40)
-    {:joined, ^second_id, broadcasted_nickname} = ServerMsg.parse(packet)
+    assert Helpers.recv_until(clients.first.socket, 5, 500, fn data ->
+      {:ok, {_, _, packet}} = data
+      case ServerMsg.parse(packet) do
+        {:joined, ^second_id, broadcasted_nickname} ->
+          assert broadcasted_nickname == clients.second.nickname
+          true
+        _ -> false
+      end
+    end)
 
-    assert broadcasted_nickname == clients.second.nickname
+    Helpers.disconnect(clients.first)
+    Helpers.disconnect(clients.second)
   end
 
   test "closes on unknown messages", clients do
@@ -152,11 +169,12 @@ defmodule LobbyTest do
 
     Helpers.skip_join_notification(clients.first.socket, second_id)
 
-    leave = ClientMsg.leave()
-    Helpers.send_to_server(clients.second.socket, leave)
+    Helpers.disconnect(clients.second)
 
     {:ok, {_, _, packet}} = :gen_udp.recv(clients.first.socket, 40)
     {:left, ^second_id} = ServerMsg.parse(packet)
+
+    Helpers.disconnect(clients.first)
   end
 
   test "heartbeats", clients do
@@ -176,5 +194,7 @@ defmodule LobbyTest do
         {:left, _} -> false
       end
     end)
+
+    Helpers.disconnect(clients.first)
   end
 end
