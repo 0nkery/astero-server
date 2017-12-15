@@ -227,4 +227,15 @@ defmodule LobbyTest do
 
     Helpers.disconnect(clients.first)
   end
+
+  test "sending asteroid data to newly connected players", clients do
+    {_, _} = Helpers.connect(clients)
+
+    assert Helpers.recv_until(clients.first.socket, 5, 1000, fn data ->
+      case data do
+        [{:asteroid} | _rest] -> true
+        _ -> false
+      end
+    end)
+  end
 end
