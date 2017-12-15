@@ -61,8 +61,10 @@ defmodule Sector do
         older_players = for {id, player} <- state.players do
           Lobby.Msg.player_joined(id, player.nickname, player.coordinate)
         end
-        older_players = Lobby.Msg.composition(older_players)
-        Lobby.Connection.send(conn, older_players)
+        if Enum.count(older_players) > 0 do
+          older_players = Lobby.Msg.composition(older_players)
+          Lobby.Connection.send(conn, older_players)
+        end
 
         spawn_asteroids = for {id, asteroid} <- state.asteroids do
           Lobby.Msg.asteroid(id, Asteroid.to_binary(asteroid))
