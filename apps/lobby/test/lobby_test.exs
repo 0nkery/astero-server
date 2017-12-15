@@ -184,8 +184,6 @@ defmodule LobbyTest do
   test "heartbeats", clients do
     {_first_id, second_id} = Helpers.connect(clients)
 
-    _ = :gen_udp.recv(clients.first.socket, 40)
-
     heartbeat = ClientMsg.heartbeat()
 
     assert Helpers.recv_until(clients.first.socket, 10, 6000, fn data ->
@@ -194,7 +192,7 @@ defmodule LobbyTest do
           Helpers.send_to_server(clients.first.socket, heartbeat)
           false
         {:left, ^second_id} -> true
-        {:left, _} -> false
+        _ -> false
       end
     end)
 
