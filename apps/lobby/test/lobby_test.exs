@@ -59,7 +59,8 @@ defmodule LobbyTest.Helpers do
   end
 
   def recv_until(socket, max_attempts, timeout, check) do
-    data = :gen_udp.recv(socket, 40, timeout)
+    {:ok, {_, _, packet}} = :gen_udp.recv(socket, 40, timeout)
+    data = ServerMsg.parse(packet)
     check_result = check.(data)
 
     case check_result do
@@ -75,8 +76,7 @@ defmodule LobbyTest.Helpers do
     send_to_server(clients.first.socket, join)
 
     {true, first_id} = recv_until(clients.first.socket, 5, 500, fn data ->
-      {:ok, {_, _, packet}} = data
-      case ServerMsg.parse(packet) do
+      case data do
         {:ack, first_id} -> {true, first_id}
         _ -> false
       end
@@ -128,11 +128,10 @@ defmodule LobbyTest do
   end
 
   test "notifies other connections about the new one", clients do
-    {_first_id, second_id} = Helpers.connect(clients)
+    {first_id, second_id} = Helpers.connect(clients)
 
     assert Helpers.recv_until(clients.first.socket, 5, 500, fn data ->
-      {:ok, {_, _, packet}} = data
-      case ServerMsg.parse(packet) do
+      case data do
         {:joined, ^second_id, broadcasted_nickname} ->
           assert broadcasted_nickname == clients.second.nickname
           true
@@ -185,8 +184,7 @@ defmodule LobbyTest do
     heartbeat = ClientMsg.heartbeat()
 
     assert Helpers.recv_until(clients.first.socket, 10, 6000, fn data ->
-      {:ok, {_, _, packet}} = data
-      case ServerMsg.parse(packet) do
+      case data do
         {:heartbeat} ->
           Helpers.send_to_server(clients.first.socket, heartbeat)
           false
