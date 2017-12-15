@@ -139,6 +139,11 @@ defmodule LobbyTest do
       end
     end)
 
+    {:ok, {_, _, packet}} = :gen_udp.recv(clients.second.socket, 40)
+    {:joined, ^first_id, broadcasted_nickname} = ServerMsg.parse(packet)
+
+    assert broadcasted_nickname == clients.first.nickname
+
     Helpers.disconnect(clients.first)
     Helpers.disconnect(clients.second)
   end
