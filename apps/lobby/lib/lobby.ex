@@ -27,20 +27,11 @@ defmodule Lobby do
     GenServer.cast(Lobby, {:broadcast, packet, except})
   end
 
-  # for testing purposes
-  def clean() do
-    GenServer.call(Lobby, :clean)
-  end
-
   # Server
 
   def init(:ok) do
     Logger.info("Started #{__MODULE__}")
     {:ok, %State{}}
-  end
-
-  def handle_call(:clean, _from, _lobby) do
-    {:reply, :ok, %State{}}
   end
 
   def handle_cast({:packet, socket, ip, port, data}, lobby) do
