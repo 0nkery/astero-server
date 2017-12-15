@@ -4,10 +4,21 @@ defmodule Sector.State do
   defstruct players: %{}
 end
 
+defmodule Sector.Player do
+  @enforce_keys [:conn, :nickname, :coordinate]
+
+  defstruct [
+    :conn,
+    :nickname,
+    :coordinate,
+  ]
+end
+
 defmodule Sector do
   use GenServer
 
   alias Sector.State
+  alias Sector.Player
 
   # Client
   def start_link(opts \\ []) do
@@ -40,7 +51,13 @@ defmodule Sector do
         player_joined = Lobby.Msg.player_joined(player_id, nickname, {x, y})
         Lobby.broadcast(player_joined, conn)
 
-        {:noreply, state}
+        player = %Player{
+          conn: conn,
+          nickname: nickname,
+          coordinate: {x, y},
+        }
+
+        {:noreply, %{state | players: Map.put(state.players, player_id, player)}}
 
       {:left, conn, player_id} ->
         player_left = Lobby.Msg.player_left(player_id)
