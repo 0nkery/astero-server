@@ -55,6 +55,7 @@ defmodule LobbyTest.Helpers.ServerMsg do
 
   def parse(<<
     5 :: size(16),
+    _message_count :: size(16),
     composition :: binary
   >>) do
     parse_composition(composition)
