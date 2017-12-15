@@ -67,7 +67,9 @@ defmodule Sector do
         player_left = Lobby.Msg.player_left(player_id)
         Lobby.broadcast(player_left, conn)
 
-        {:noreply, state}
+        {_player, players} = Map.pop(state.players, player_id)
+
+        {:noreply, %{state | players: players}}
     end
   end
 
