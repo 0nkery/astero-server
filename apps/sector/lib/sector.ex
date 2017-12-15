@@ -42,19 +42,18 @@ defmodule Sector do
   def handle_cast(msg, state) do
     case msg do
       {:joined, conn, player_id, nickname} ->
-        x = :rand.uniform(400) - 400
-        y = :rand.uniform(300) - 300
+        coord = generate_coordinates()
 
-        ack = Lobby.Msg.ack(player_id, {x, y})
+        ack = Lobby.Msg.ack(player_id, coord)
         Lobby.Connection.send(conn, ack)
 
-        player_joined = Lobby.Msg.player_joined(player_id, nickname, {x, y})
+        player_joined = Lobby.Msg.player_joined(player_id, nickname, coord)
         Lobby.broadcast(player_joined, conn)
 
         player = %Player{
           conn: conn,
           nickname: nickname,
-          coordinate: {x, y},
+          coordinate: coord,
         }
 
         {:noreply, %{state | players: Map.put(state.players, player_id, player)}}
@@ -65,5 +64,9 @@ defmodule Sector do
 
         {:noreply, state}
     end
+  end
+
+  defp generate_coordinates() do
+    {:rand.uniform(400) - 400, :rand.uniform(300) - 300}
   end
 end
