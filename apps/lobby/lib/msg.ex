@@ -44,10 +44,10 @@ defmodule Lobby.Msg do
 
   def composition(messages) do
     message_count = Enum.count(messages)
-    composed = for msg <- messages, into: <<>>, do: <<byte_size(msg) :: size(16)>> <> msg
+    composed = for msg <- messages, into: <<>>, do: <<byte_size(msg) :: size(8)>> <> msg
     <<
       5 :: size(16),
-      message_count :: size(16),
+      message_count :: size(8),
       composed :: binary
     >>
   end

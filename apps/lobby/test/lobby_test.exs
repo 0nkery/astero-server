@@ -55,14 +55,14 @@ defmodule LobbyTest.Helpers.ServerMsg do
 
   def parse(<<
     5 :: size(16),
-    _message_count :: size(16),
+    _message_count :: size(8),
     composition :: binary
   >>) do
     parse_composition(composition)
   end
 
   defp parse_composition(<<
-    size :: size(16),
+    size :: size(8),
     msg :: binary - size(size),
     rest :: binary,
   >>) do
