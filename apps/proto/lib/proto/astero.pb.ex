@@ -30,6 +30,17 @@ defmodule Astero.Asteroid do
   field :life, 5, type: :float
 end
 
+defmodule Astero.Asteroids do
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+    asteroids: [Astero.Asteroid.t]
+  }
+  defstruct [:asteroids]
+
+  field :asteroids, 1, repeated: true, type: Astero.Asteroid
+end
+
 defmodule Astero.Join do
   use Protobuf, syntax: :proto3
 
@@ -87,15 +98,23 @@ defmodule Astero.OtherLeft do
   field :id, 1, type: :int32
 end
 
-defmodule Astero.SpawnAsteroid do
+defmodule Astero.Spawn do
   use Protobuf, syntax: :proto3
 
   @type t :: %__MODULE__{
-    asteroids: [Astero.Asteroid.t]
+    entity:    {atom, any}
   }
-  defstruct [:asteroids]
+  defstruct [:entity]
 
-  field :asteroids, 1, repeated: true, type: Astero.Asteroid
+  oneof :entity, 0
+  field :asteroids, 1, type: Astero.Asteroids, oneof: 0
+end
+
+defmodule Astero.Spawn.Kind do
+  use Protobuf, enum: true, syntax: :proto3
+
+  field :UNKNOWN, 0
+  field :ASTEROID, 1
 end
 
 defmodule Astero.Heartbeat do
@@ -103,4 +122,33 @@ defmodule Astero.Heartbeat do
 
   defstruct []
 
+end
+
+defmodule Astero.Message do
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+    msg:          {atom, any}
+  }
+  defstruct [:msg]
+
+  oneof :msg, 0
+  field :join, 1, type: Astero.Join, oneof: 0
+  field :join_ack, 2, type: Astero.JoinAck, oneof: 0
+  field :other_joined, 3, type: Astero.OtherJoined, oneof: 0
+  field :leave, 4, type: Astero.Leave, oneof: 0
+  field :other_left, 5, type: Astero.OtherLeft, oneof: 0
+  field :spawn, 6, type: Astero.Spawn, oneof: 0
+end
+
+defmodule Astero.Message.Kind do
+  use Protobuf, enum: true, syntax: :proto3
+
+  field :UNKNOWN, 0
+  field :JOIN, 1
+  field :JOIN_ACK, 2
+  field :OTHER_JOINED, 3
+  field :LEAVE, 4
+  field :OTHER_LEFT, 5
+  field :SPAWN_ASTEROID, 6
 end
