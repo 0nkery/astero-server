@@ -110,13 +110,6 @@ defmodule Astero.Spawn do
   field :asteroids, 1, type: Astero.Asteroids, oneof: 0
 end
 
-defmodule Astero.Spawn.Kind do
-  use Protobuf, enum: true, syntax: :proto3
-
-  field :UNKNOWN, 0
-  field :ASTEROID, 1
-end
-
 defmodule Astero.Heartbeat do
   use Protobuf, syntax: :proto3
 
@@ -139,16 +132,4 @@ defmodule Astero.Message do
   field :leave, 4, type: Astero.Leave, oneof: 0
   field :other_left, 5, type: Astero.OtherLeft, oneof: 0
   field :spawn, 6, type: Astero.Spawn, oneof: 0
-end
-
-defmodule Astero.Message.Kind do
-  use Protobuf, enum: true, syntax: :proto3
-
-  field :UNKNOWN, 0
-  field :JOIN, 1
-  field :JOIN_ACK, 2
-  field :OTHER_JOINED, 3
-  field :LEAVE, 4
-  field :OTHER_LEFT, 5
-  field :SPAWN_ASTEROID, 6
 end
