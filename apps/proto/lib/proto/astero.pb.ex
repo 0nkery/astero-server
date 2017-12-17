@@ -117,7 +117,20 @@ defmodule Astero.Heartbeat do
 
 end
 
-defmodule Astero.Message do
+defmodule Astero.Client do
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+    msg:   {atom, any}
+  }
+  defstruct [:msg]
+
+  oneof :msg, 0
+  field :join, 1, type: Astero.Join, oneof: 0
+  field :leave, 2, type: Astero.Leave, oneof: 0
+end
+
+defmodule Astero.Server do
   use Protobuf, syntax: :proto3
 
   @type t :: %__MODULE__{
@@ -126,10 +139,8 @@ defmodule Astero.Message do
   defstruct [:msg]
 
   oneof :msg, 0
-  field :join, 1, type: Astero.Join, oneof: 0
-  field :join_ack, 2, type: Astero.JoinAck, oneof: 0
-  field :other_joined, 3, type: Astero.OtherJoined, oneof: 0
-  field :leave, 4, type: Astero.Leave, oneof: 0
-  field :other_left, 5, type: Astero.OtherLeft, oneof: 0
-  field :spawn, 6, type: Astero.Spawn, oneof: 0
+  field :join_ack, 1, type: Astero.JoinAck, oneof: 0
+  field :other_joined, 2, type: Astero.OtherJoined, oneof: 0
+  field :other_left, 3, type: Astero.OtherLeft, oneof: 0
+  field :spawn, 4, type: Astero.Spawn, oneof: 0
 end
