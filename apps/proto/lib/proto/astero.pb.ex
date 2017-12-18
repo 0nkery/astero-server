@@ -15,19 +15,21 @@ defmodule Astero.Asteroid do
   use Protobuf, syntax: :proto3
 
   @type t :: %__MODULE__{
+    id:       integer,
     pos:      Astero.Coord.t,
     velocity: Astero.Coord.t,
     facing:   float,
     rvel:     float,
     life:     float
   }
-  defstruct [:pos, :velocity, :facing, :rvel, :life]
+  defstruct [:id, :pos, :velocity, :facing, :rvel, :life]
 
-  field :pos, 1, type: Astero.Coord
-  field :velocity, 2, type: Astero.Coord
-  field :facing, 3, type: :float
-  field :rvel, 4, type: :float
-  field :life, 5, type: :float
+  field :id, 1, type: :int32
+  field :pos, 2, type: Astero.Coord
+  field :velocity, 3, type: Astero.Coord
+  field :facing, 4, type: :float
+  field :rvel, 5, type: :float
+  field :life, 6, type: :float
 end
 
 defmodule Astero.Asteroids do
