@@ -80,13 +80,21 @@ defmodule Lobby.Connection do
         {:noreply, player}
 
       {:packet, packet} ->
-        parsed_packet = Client.decode(packet)
-        player = handle(player, parsed_packet)
+        try do
+          decoded = Client.decode(packet)
+          player = handle(player, decoded)
 
-        Process.cancel_timer(player.heartbeat_timer, async: true)
-        heartbeat_timer = schedule_ping()
+          Process.cancel_timer(player.heartbeat_timer, async: true)
+          heartbeat_timer = schedule_ping()
 
-        {:noreply, %{player | heartbeat_timer: heartbeat_timer, missed_heartbeats: 0}}
+          {:noreply, %{player | heartbeat_timer: heartbeat_timer, missed_heartbeats: 0}}
+        rescue
+          _ ->
+            notify = player.state == :joined
+            close_connection(player, notify)
+
+            {:noreply, player}
+        end
     end
   end
 
@@ -107,12 +115,6 @@ defmodule Lobby.Connection do
         player
 
       {:heartbeat} -> player
-
-      {:unknown} ->
-        notify = state == :joined
-        close_connection(player, notify)
-
-        player
     end
   end
 
