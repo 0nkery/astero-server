@@ -1,18 +1,9 @@
 require Logger
 
-defmodule Sector.Asteroid do
+defmodule Sector.Asteroid.Impl do
   alias Sector.Util.Math
-  alias Sector.Asteroid
-
-  @enforce_keys [:coordinate, :velocity]
-
-  defstruct [
-    :coordinate,
-    :velocity,
-    facing: 0.0,
-    rvel: 0.0,
-    life: 2.0,
-  ]
+  alias Astero.Coord
+  alias Astero.Asteroid
 
   @max_asteroid_velocity 50.0
 
@@ -23,25 +14,11 @@ defmodule Sector.Asteroid do
       angle = :rand.uniform() * 2.0 * :math.pi
       distance = :rand.uniform() * (max_radius - min_radius) + min_radius
       {vx, vy} = Math.vector_from_angle(angle)
-      coordinate = {x + vx * distance, y + vy * distance}
-      velocity = Math.random_vector(@max_asteroid_velocity)
+      coordinate = Coord.new(x: x + vx * distance, y: y + vy * distance)
+      {vx, vy} = Math.random_vector(@max_asteroid_velocity)
+      velocity = Coord.new(x: vx, y: vy)
 
-      %Asteroid{
-        coordinate: coordinate,
-        velocity: velocity
-      }
+      Asteroid.new(pos: coordinate, velocity: velocity, life: 2.0)
     end
-  end
-
-  def to_binary(%Asteroid{coordinate: {x, y}, velocity: {vx, vy}} = asteroid) do
-    <<
-      x :: float,
-      y :: float,
-      vx :: float,
-      vy :: float,
-      asteroid.facing :: float,
-      asteroid.rvel :: float,
-      asteroid.life :: float,
-    >>
   end
 end

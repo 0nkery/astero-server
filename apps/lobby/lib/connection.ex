@@ -57,7 +57,7 @@ defmodule Lobby.Connection do
         {:noreply, close_connection(player)}
 
       :heartbeat ->
-        Lobby.Connection.send(self(), Heartbeat.new())
+        Lobby.Connection.send(self(), {:heartbeat, Heartbeat.new()})
         heartbeat_timer = schedule_ping()
 
         {:noreply,
@@ -81,26 +81,29 @@ defmodule Lobby.Connection do
 
       {:packet, packet} ->
         try do
-          decoded = Client.decode(packet)
-          player = handle(player, decoded)
-
-          Process.cancel_timer(player.heartbeat_timer, async: true)
-          heartbeat_timer = schedule_ping()
-
-          {:noreply, %{player | heartbeat_timer: heartbeat_timer, missed_heartbeats: 0}}
+          Client.decode(packet)
         rescue
-          _ ->
+          FunctionClauseError ->
             notify = player.state == :joined
             close_connection(player, notify)
 
             {:noreply, player}
+        else
+          decoded ->
+
+            player = handle(player, decoded)
+
+            Process.cancel_timer(player.heartbeat_timer, async: true)
+            heartbeat_timer = schedule_ping()
+
+            {:noreply, %{player | heartbeat_timer: heartbeat_timer, missed_heartbeats: 0}}
         end
     end
   end
 
   defp handle(%Player{state: state} = player, msg) do
     case msg do
-      {:join, nickname} when state == :new ->
+      %Client{msg: {:join, %Astero.Join{nickname: nickname}}} when state == :new ->
         Logger.debug("Player joined: #{inspect(player.port)} #{player.conn_id} #{nickname}")
 
         Sector.player_joined(self(), player.conn_id, nickname)
@@ -109,12 +112,12 @@ defmodule Lobby.Connection do
 
         %{player | state: :joined, heartbeat_timer: heartbeat_timer}
 
-      {:leave} when state == :joined ->
+      %Client{msg: {:leave, %Astero.Leave{}}} when state == :joined ->
         close_connection(player)
 
         player
 
-      {:heartbeat} -> player
+      %Client{msg: {:heartbeat, %Astero.Heartbeat{}}} -> player
     end
   end
 
