@@ -17,6 +17,12 @@ end
 defmodule Sector do
   use GenServer
 
+  alias Astero.JoinAck
+  alias Astero.OtherJoined
+  alias Astero.Asteroids
+  alias Astero.Spawn
+  alias Astero.OtherLeft
+
   alias Sector.State
   alias Sector.Player
   alias Sector.Asteroid
@@ -52,24 +58,18 @@ defmodule Sector do
       {:joined, conn, player_id, nickname} ->
         coord = generate_coordinates()
 
-        ack = Lobby.Msg.ack(player_id, coord)
-        Lobby.Connection.send(conn, ack)
+        Lobby.Connection.send(conn, JoinAck.new())
 
-        player_joined = Lobby.Msg.player_joined(player_id, nickname, coord)
-        Lobby.broadcast(player_joined, conn)
+        joined = OtherJoined.new(id: player_id, nickname: nickname, pos: coord)
+        Lobby.broadcast(joined, conn)
 
-        older_players = for {id, player} <- state.players do
-          Lobby.Msg.player_joined(id, player.nickname, player.coordinate)
-        end
-        if Enum.count(older_players) > 0 do
-          older_players = Lobby.Msg.composition(older_players)
-          Lobby.Connection.send(conn, older_players)
-        end
+        Enum.each(state.players, fn {id, player} ->
+          older_player = OtherJoined.new(id: id, nickname: player.nickname, pos: player.coordinate)
+          Lobby.Connection.send(conn, older_player)
+        end)
 
-        spawn_asteroids = for {id, asteroid} <- state.asteroids do
-          Lobby.Msg.asteroid(id, Asteroid.to_binary(asteroid))
-        end
-        spawn_asteroids = Lobby.Msg.composition(spawn_asteroids)
+        asteroids = Asteroids.new(asteroids: state.asteroids)
+        spawn_asteroids = Spawn.new(entity: asteroids)
         Lobby.Connection.send(conn, spawn_asteroids)
 
         player = %Player{
@@ -81,7 +81,7 @@ defmodule Sector do
         {:noreply, %{state | players: Map.put(state.players, player_id, player)}}
 
       {:left, conn, player_id} ->
-        player_left = Lobby.Msg.player_left(player_id)
+        player_left = OtherLeft.new(id: player_id)
         Lobby.broadcast(player_left, conn)
 
         {_player, players} = Map.pop(state.players, player_id)

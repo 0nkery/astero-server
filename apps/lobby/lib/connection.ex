@@ -17,6 +17,10 @@ end
 defmodule Lobby.Connection do
   use GenServer, restart: :transient
 
+  alias Astero.Heartbeat
+  alias Astero.Client
+  alias Astero.Server
+
   alias Lobby.Connection.Player
 
   # Client
@@ -53,7 +57,7 @@ defmodule Lobby.Connection do
         {:noreply, close_connection(player)}
 
       :heartbeat ->
-        Lobby.Connection.send(self(), Lobby.Msg.heartbeat())
+        Lobby.Connection.send(self(), Heartbeat.new())
         heartbeat_timer = schedule_ping()
 
         {:noreply,
@@ -70,12 +74,13 @@ defmodule Lobby.Connection do
 
   def handle_cast(msg, player) do
     case msg do
-      {:send, packet} ->
-        :gen_udp.send(player.socket, player.ip, player.port, packet)
+      {:send, data} ->
+        encoded_packet = Server.new(msg: data) |> Server.encode()
+        :gen_udp.send(player.socket, player.ip, player.port, encoded_packet)
         {:noreply, player}
 
       {:packet, packet} ->
-        parsed_packet = Lobby.Msg.Incoming.parse(packet)
+        parsed_packet = Client.decode(packet)
         player = handle(player, parsed_packet)
 
         Process.cancel_timer(player.heartbeat_timer, async: true)
