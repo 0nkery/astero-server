@@ -4,16 +4,20 @@ defmodule LobbyTest.Helpers do
   @server_address {0, 0, 0, 0, 0, 0, 0, 1}
   @server_port 11111
 
-  alias LobbyTest.Helpers.ClientMsg
-  alias LobbyTest.Helpers.ServerMsg
+  alias Astero.Server
+  alias Astero.Client
+  alias Astero.Join
+  alias Astero.JoinAck
+  alias Astero.Leave
 
-  def send_to_server(socket, packet) do
+  def send_to_server(socket, data) do
+    packet = Client.new(msg: data) |> Client.encode()
     :gen_udp.send(socket, @server_address, @server_port, packet)
   end
 
   def recv_until(socket, max_attempts, timeout, check) do
     {:ok, {_, _, packet}} = :gen_udp.recv(socket, 40, timeout)
-    data = ServerMsg.parse(packet)
+    %Server{msg: data} = Server.decode(packet)
     check_result = check.(data)
 
     case check_result do
@@ -25,27 +29,31 @@ defmodule LobbyTest.Helpers do
   end
 
   def connect(clients) do
-    join = ClientMsg.join(clients.first.nickname)
+    join = {:join, Join.new(nickname: clients.first.nickname)}
     send_to_server(clients.first.socket, join)
 
     {true, first_id} = recv_until(clients.first.socket, 5, 500, fn data ->
       case data do
-        {:ack, first_id} -> {true, first_id}
+        {:join_ack, %JoinAck{id: first_id}} -> {true, first_id}
         _ -> false
       end
     end)
 
-    join = ClientMsg.join(clients.second.nickname)
+    join = {:join, Join.new(nickname: clients.second.nickname)}
     send_to_server(clients.second.socket, join)
 
-    {:ok, {_, _, packet}} = :gen_udp.recv(clients.second.socket, 40)
-    {:ack, second_id} = ServerMsg.parse(packet)
+    {true, second_id} = recv_until(clients.second.socket, 5, 500, fn data ->
+      case data do
+        {:join_ack, %JoinAck{id: second_id}} -> {true, second_id}
+        _ -> false
+      end
+    end)
 
     {first_id, second_id}
   end
 
   def disconnect(client) do
-    leave = ClientMsg.leave()
+    leave = {:leave, Leave.new()}
     send_to_server(client.socket, leave)
   end
 end
@@ -54,7 +62,6 @@ defmodule LobbyTest do
   use ExUnit.Case
 
   alias LobbyTest.Helpers
-  alias LobbyTest.Helpers.ClientMsg
 
   @socket_options [:binary, :inet6, {:active, false}]
 
@@ -80,19 +87,19 @@ defmodule LobbyTest do
 
     assert Helpers.recv_until(clients.first.socket, 5, 500, fn data ->
       case data do
-        {:joined, ^second_id, broadcasted_nickname} ->
+        {:other_joined, %Astero.OtherJoined{id: ^second_id, nickname: broadcasted_nickname}} ->
           assert broadcasted_nickname == clients.second.nickname
           true
+
         _ -> false
       end
     end)
 
-    assert Helpers.recv_until(clients.second.socket, 5, 1000, fn data ->
+    assert Helpers.recv_until(clients.second.socket, 5, 500, fn data ->
       case data do
-        older_players when is_list(older_players) ->
-          Enum.any?(older_players, fn {:joined, id, nickname} ->
-            id == first_id and nickname == clients.first.nickname
-          end)
+        {:other_joined, %Astero.OtherJoined{id: ^first_id, nickname: broadcasted_nickname}} ->
+            assert broadcasted_nickname == clients.first.nickname
+            true
 
         _ -> false
       end
@@ -129,7 +136,8 @@ defmodule LobbyTest do
 
     assert Helpers.recv_until(clients.first.socket, 5, 500, fn data ->
       case data do
-        {:left, ^second_id} -> true
+        {:other_left, %Astero.OtherLeft{id: ^second_id}} -> true
+
         _ -> false
       end
     end)
@@ -140,14 +148,15 @@ defmodule LobbyTest do
   test "heartbeats", clients do
     {_first_id, second_id} = Helpers.connect(clients)
 
-    heartbeat = ClientMsg.heartbeat()
+    heartbeat = {:heartbeat, Astero.Heartbeat.new()}
 
     assert Helpers.recv_until(clients.first.socket, 10, 6000, fn data ->
       case data do
-        {:heartbeat} ->
+        {:heartbeat, %Astero.Heartbeat{}} ->
           Helpers.send_to_server(clients.first.socket, heartbeat)
           false
-        {:left, ^second_id} -> true
+
+        {:other_left, %Astero.OtherLeft{id: ^second_id}} -> true
         _ -> false
       end
     end)
@@ -160,7 +169,7 @@ defmodule LobbyTest do
 
     assert Helpers.recv_until(clients.first.socket, 5, 1000, fn data ->
       case data do
-        [{:asteroid} | _rest] -> true
+        {:spawn, %Astero.Spawn{entity: {:asteroids, _}}} -> true
         _ -> false
       end
     end)
