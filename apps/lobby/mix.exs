@@ -26,7 +26,7 @@ defmodule Lobby.Mixfile do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:protobuf, "~> 0.5"},
+      {:proto, in_umbrella: true},
     ]
   end
 end
