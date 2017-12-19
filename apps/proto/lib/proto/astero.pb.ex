@@ -1,5 +1,5 @@
 defmodule Astero.Coord do
-  use Protobuf, syntax: :proto3
+  use Protobuf, syntax: :proto2
 
   @type t :: %__MODULE__{
     x: float,
@@ -7,55 +7,66 @@ defmodule Astero.Coord do
   }
   defstruct [:x, :y]
 
-  field :x, 1, type: :float
-  field :y, 2, type: :float
+  field :x, 1, required: true, type: :float
+  field :y, 2, required: true, type: :float
 end
 
 defmodule Astero.Asteroid do
-  use Protobuf, syntax: :proto3
+  use Protobuf, syntax: :proto2
 
   @type t :: %__MODULE__{
-    id:       integer,
     pos:      Astero.Coord.t,
     velocity: Astero.Coord.t,
     facing:   float,
     rvel:     float,
     life:     float
   }
-  defstruct [:id, :pos, :velocity, :facing, :rvel, :life]
+  defstruct [:pos, :velocity, :facing, :rvel, :life]
 
-  field :id, 1, type: :int32
-  field :pos, 2, type: Astero.Coord
-  field :velocity, 3, type: Astero.Coord
-  field :facing, 4, type: :float
-  field :rvel, 5, type: :float
-  field :life, 6, type: :float
+  field :pos, 1, required: true, type: Astero.Coord
+  field :velocity, 2, required: true, type: Astero.Coord
+  field :facing, 3, required: true, type: :float
+  field :rvel, 4, required: true, type: :float
+  field :life, 5, required: true, type: :float
 end
 
 defmodule Astero.Asteroids do
-  use Protobuf, syntax: :proto3
+  use Protobuf, syntax: :proto2
 
   @type t :: %__MODULE__{
-    asteroids: [Astero.Asteroid.t]
+    entities: %{integer => Astero.Asteroid.t}
   }
-  defstruct [:asteroids]
+  defstruct [:entities]
 
-  field :asteroids, 1, repeated: true, type: Astero.Asteroid
+  field :entities, 1, repeated: true, type: Astero.Asteroids.EntitiesEntry, map: true
+end
+
+defmodule Astero.Asteroids.EntitiesEntry do
+  use Protobuf, map: true, syntax: :proto2
+
+  @type t :: %__MODULE__{
+    key:   integer,
+    value: Astero.Asteroid.t
+  }
+  defstruct [:key, :value]
+
+  field :key, 1, optional: true, type: :int32
+  field :value, 2, optional: true, type: Astero.Asteroid
 end
 
 defmodule Astero.Join do
-  use Protobuf, syntax: :proto3
+  use Protobuf, syntax: :proto2
 
   @type t :: %__MODULE__{
     nickname: String.t
   }
   defstruct [:nickname]
 
-  field :nickname, 1, type: :string
+  field :nickname, 1, required: true, type: :string
 end
 
 defmodule Astero.JoinAck do
-  use Protobuf, syntax: :proto3
+  use Protobuf, syntax: :proto2
 
   @type t :: %__MODULE__{
     id:  integer,
@@ -63,12 +74,12 @@ defmodule Astero.JoinAck do
   }
   defstruct [:id, :pos]
 
-  field :id, 1, type: :int32
-  field :pos, 2, type: Astero.Coord
+  field :id, 1, required: true, type: :int32
+  field :pos, 2, required: true, type: Astero.Coord
 end
 
 defmodule Astero.OtherJoined do
-  use Protobuf, syntax: :proto3
+  use Protobuf, syntax: :proto2
 
   @type t :: %__MODULE__{
     id:       integer,
@@ -77,31 +88,31 @@ defmodule Astero.OtherJoined do
   }
   defstruct [:id, :nickname, :pos]
 
-  field :id, 1, type: :int32
-  field :nickname, 2, type: :string
-  field :pos, 3, type: Astero.Coord
+  field :id, 1, required: true, type: :int32
+  field :nickname, 2, required: true, type: :string
+  field :pos, 3, required: true, type: Astero.Coord
 end
 
 defmodule Astero.Leave do
-  use Protobuf, syntax: :proto3
+  use Protobuf, syntax: :proto2
 
   defstruct []
 
 end
 
 defmodule Astero.OtherLeft do
-  use Protobuf, syntax: :proto3
+  use Protobuf, syntax: :proto2
 
   @type t :: %__MODULE__{
     id: integer
   }
   defstruct [:id]
 
-  field :id, 1, type: :int32
+  field :id, 1, required: true, type: :int32
 end
 
 defmodule Astero.Spawn do
-  use Protobuf, syntax: :proto3
+  use Protobuf, syntax: :proto2
 
   @type t :: %__MODULE__{
     entity:    {atom, any}
@@ -109,18 +120,18 @@ defmodule Astero.Spawn do
   defstruct [:entity]
 
   oneof :entity, 0
-  field :asteroids, 1, type: Astero.Asteroids, oneof: 0
+  field :asteroids, 1, optional: true, type: Astero.Asteroids, oneof: 0
 end
 
 defmodule Astero.Heartbeat do
-  use Protobuf, syntax: :proto3
+  use Protobuf, syntax: :proto2
 
   defstruct []
 
 end
 
 defmodule Astero.Client do
-  use Protobuf, syntax: :proto3
+  use Protobuf, syntax: :proto2
 
   @type t :: %__MODULE__{
     msg:       {atom, any}
@@ -128,13 +139,13 @@ defmodule Astero.Client do
   defstruct [:msg]
 
   oneof :msg, 0
-  field :join, 1, type: Astero.Join, oneof: 0
-  field :leave, 2, type: Astero.Leave, oneof: 0
-  field :heartbeat, 3, type: Astero.Heartbeat, oneof: 0
+  field :join, 1, optional: true, type: Astero.Join, oneof: 0
+  field :leave, 2, optional: true, type: Astero.Leave, oneof: 0
+  field :heartbeat, 3, optional: true, type: Astero.Heartbeat, oneof: 0
 end
 
 defmodule Astero.Server do
-  use Protobuf, syntax: :proto3
+  use Protobuf, syntax: :proto2
 
   @type t :: %__MODULE__{
     msg:          {atom, any}
@@ -142,9 +153,9 @@ defmodule Astero.Server do
   defstruct [:msg]
 
   oneof :msg, 0
-  field :join_ack, 1, type: Astero.JoinAck, oneof: 0
-  field :other_joined, 2, type: Astero.OtherJoined, oneof: 0
-  field :other_left, 3, type: Astero.OtherLeft, oneof: 0
-  field :spawn, 4, type: Astero.Spawn, oneof: 0
-  field :heartbeat, 5, type: Astero.Heartbeat, oneof: 0
+  field :join_ack, 1, optional: true, type: Astero.JoinAck, oneof: 0
+  field :other_joined, 2, optional: true, type: Astero.OtherJoined, oneof: 0
+  field :other_left, 3, optional: true, type: Astero.OtherLeft, oneof: 0
+  field :spawn, 4, optional: true, type: Astero.Spawn, oneof: 0
+  field :heartbeat, 5, optional: true, type: Astero.Heartbeat, oneof: 0
 end
