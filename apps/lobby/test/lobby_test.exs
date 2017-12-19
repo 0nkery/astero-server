@@ -169,7 +169,9 @@ defmodule LobbyTest do
 
     assert Helpers.recv_until(clients.first.socket, 5, 1000, fn data ->
       case data do
-        {:spawn, %Astero.Spawn{entity: {:asteroids, _}}} -> true
+        {:spawn, %Astero.Spawn{entity: {:asteroids, asteroids}}} ->
+          assert Enum.count(asteroids.entities) == 5
+          true
         _ -> false
       end
     end)

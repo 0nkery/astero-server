@@ -18,7 +18,7 @@ defmodule Sector.Asteroid.Impl do
       {vx, vy} = Math.random_vector(@max_asteroid_velocity)
       velocity = Coord.new(x: vx, y: vy)
 
-      Asteroid.new(pos: coordinate, velocity: velocity, life: 2.0)
+      Asteroid.new(pos: coordinate, velocity: velocity, life: 2.0, facing: 0.0, rvel: 0.0)
     end
   end
 end

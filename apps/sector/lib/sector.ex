@@ -69,7 +69,7 @@ defmodule Sector do
           Lobby.Connection.send(conn, {:other_joined, older_player})
         end)
 
-        asteroids = Asteroids.new(asteroids: Map.values(state.asteroids))
+        asteroids = Asteroids.new(entities: state.asteroids)
         spawn_asteroids = Spawn.new(entity: {:asteroids, asteroids})
         Lobby.Connection.send(conn, {:spawn, spawn_asteroids})
 
