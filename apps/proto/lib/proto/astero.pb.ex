@@ -34,7 +34,7 @@ defmodule Astero.Asteroids do
   use Protobuf, syntax: :proto2
 
   @type t :: %__MODULE__{
-    entities: %{integer => Astero.Asteroid.t}
+    entities: %{non_neg_integer => Astero.Asteroid.t}
   }
   defstruct [:entities]
 
@@ -45,12 +45,12 @@ defmodule Astero.Asteroids.EntitiesEntry do
   use Protobuf, map: true, syntax: :proto2
 
   @type t :: %__MODULE__{
-    key:   integer,
+    key:   non_neg_integer,
     value: Astero.Asteroid.t
   }
   defstruct [:key, :value]
 
-  field :key, 1, optional: true, type: :int32
+  field :key, 1, optional: true, type: :uint32
   field :value, 2, optional: true, type: Astero.Asteroid
 end
 
@@ -69,12 +69,12 @@ defmodule Astero.JoinAck do
   use Protobuf, syntax: :proto2
 
   @type t :: %__MODULE__{
-    id:  integer,
+    id:  non_neg_integer,
     pos: Astero.Coord.t
   }
   defstruct [:id, :pos]
 
-  field :id, 1, required: true, type: :int32
+  field :id, 1, required: true, type: :uint32
   field :pos, 2, required: true, type: Astero.Coord
 end
 
@@ -82,13 +82,13 @@ defmodule Astero.OtherJoined do
   use Protobuf, syntax: :proto2
 
   @type t :: %__MODULE__{
-    id:       integer,
+    id:       non_neg_integer,
     nickname: String.t,
     pos:      Astero.Coord.t
   }
   defstruct [:id, :nickname, :pos]
 
-  field :id, 1, required: true, type: :int32
+  field :id, 1, required: true, type: :uint32
   field :nickname, 2, required: true, type: :string
   field :pos, 3, required: true, type: Astero.Coord
 end
@@ -104,11 +104,11 @@ defmodule Astero.OtherLeft do
   use Protobuf, syntax: :proto2
 
   @type t :: %__MODULE__{
-    id: integer
+    id: non_neg_integer
   }
   defstruct [:id]
 
-  field :id, 1, required: true, type: :int32
+  field :id, 1, required: true, type: :uint32
 end
 
 defmodule Astero.Spawn do
