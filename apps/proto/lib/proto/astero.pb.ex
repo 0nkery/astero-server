@@ -17,16 +17,12 @@ defmodule Astero.Asteroid do
   @type t :: %__MODULE__{
     pos:      Astero.Coord.t,
     velocity: Astero.Coord.t,
-    facing:   float,
-    rvel:     float,
     life:     float
   }
-  defstruct [:pos, :velocity, :facing, :rvel, :life]
+  defstruct [:pos, :velocity, :life]
 
   field :pos, 1, required: true, type: Astero.Coord
   field :velocity, 2, required: true, type: Astero.Coord
-  field :facing, 3, required: true, type: :float
-  field :rvel, 4, required: true, type: :float
   field :life, 5, required: true, type: :float
 end
 
