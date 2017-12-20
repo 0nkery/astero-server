@@ -111,7 +111,7 @@ defmodule Sector do
 
           Process.send_after(self(), :spawn, @asteroid_spawn_cooldown)
 
-          %{sector | asteroids: Map.put(asteroids, new_id, asteroid)}
+          %{sector | asteroids: Map.put(sector.asteroids, new_id, asteroid)}
         end
 
         {:noreply, sector}
