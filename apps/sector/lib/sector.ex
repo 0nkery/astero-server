@@ -105,7 +105,7 @@ defmodule Sector do
           new_id = asteroids_count + 1
           asteroid = Asteroid.Impl.create_asteroid(100.0, 300.0)
 
-          asteroids = Asteroids.new(entities: %{new_id: asteroid})
+          asteroids = Asteroids.new(entities: %{new_id => asteroid})
           spawn_asteroids = Spawn.new(entity: {:asteroids, asteroids})
           Lobby.broadcast({:spawn, spawn_asteroids})
 
