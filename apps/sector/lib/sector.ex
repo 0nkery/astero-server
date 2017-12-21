@@ -19,8 +19,6 @@ defmodule Sector do
 
   alias Astero.JoinAck
   alias Astero.OtherJoined
-  alias Astero.Asteroids
-  alias Astero.Spawn
   alias Astero.OtherLeft
   alias Astero.Coord
 
@@ -51,6 +49,8 @@ defmodule Sector do
     asteroids = Asteroid.Impl.create_asteroids(@initial_asteroids_count, 100.0, 250.0)
     asteroids = Map.new(Enum.zip(1..@initial_asteroids_count, asteroids))
 
+    Sector.Simulation.spawn(asteroids)
+
     {:ok, %State{asteroids: asteroids}}
   end
 
@@ -69,9 +69,7 @@ defmodule Sector do
           Lobby.Connection.send(conn, {:other_joined, older_player})
         end)
 
-        asteroids = Asteroids.new(entities: state.asteroids)
-        spawn_asteroids = Spawn.new(entity: {:asteroids, asteroids})
-        Lobby.Connection.send(conn, {:spawn, spawn_asteroids})
+        Sector.Simulation.send_state(conn)
 
         player = %Player{
           conn: conn,
