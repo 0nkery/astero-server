@@ -21,13 +21,19 @@ defmodule Sector do
   alias Astero.OtherJoined
   alias Astero.OtherLeft
   alias Astero.Coord
+  alias Astero.Asteroids
+  alias Astero.Spawn
 
   alias Sector.State
   alias Sector.Player
   alias Sector.Asteroid
 
+  alias Sector.Simulation
+
   @initial_asteroids_count 5
   @max_asteroids_count 10
+  @asteroid_spawn_rate 5000
+  @simulation_update_rate 100
 
   # Client
   def start_link(opts \\ []) do
@@ -49,7 +55,8 @@ defmodule Sector do
     asteroids = Asteroid.Impl.create_asteroids(@initial_asteroids_count, 100.0, 250.0)
     asteroids = Map.new(Enum.zip(1..@initial_asteroids_count, asteroids))
 
-    Sector.Simulation.spawn(asteroids)
+    Process.send_after(self(), :spawn, @asteroid_spawn_rate)
+    Process.send_after(self(), :update_sim, @simulation_update_rate)
 
     {:ok, %State{asteroids: asteroids}}
   end
@@ -69,7 +76,9 @@ defmodule Sector do
           Lobby.Connection.send(conn, {:other_joined, older_player})
         end)
 
-        Sector.Simulation.send_state(conn)
+        asteroids = Asteroids.new(entities: state.asteroids)
+        spawn_asteroids = Spawn.new(entity: {:asteroids, asteroids})
+        Lobby.Connection.send(conn, {:spawn, spawn_asteroids})
 
         player = %Player{
           conn: conn,
@@ -86,6 +95,37 @@ defmodule Sector do
         {_player, players} = Map.pop(state.players, player_id)
 
         {:noreply, %{state | players: players}}
+    end
+  end
+
+  def handle_info(msg, sector) do
+    case msg do
+      :spawn ->
+        asteroids_count = Enum.count(sector.asteroids)
+
+        sector = if asteroids_count == @max_asteroids_count do
+          sector
+        else
+          new_id = asteroids_count + 1
+          asteroid = Asteroid.Impl.create_asteroid(100.0, 300.0)
+
+          asteroids = Asteroids.new(entities: %{new_id => asteroid})
+          spawn_asteroids = Spawn.new(entity: {:asteroids, asteroids})
+          Lobby.broadcast({:spawn, spawn_asteroids})
+
+          Process.send_after(self(), :spawn, @asteroid_spawn_rate)
+
+          %{sector | asteroids: Map.put(sector.asteroids, new_id, asteroid)}
+        end
+
+        {:noreply, sector}
+
+      :update_sim ->
+        sector = Simulation.update(sector, @simulation_update_rate / 1000.0, {800.0, 600.0})
+
+        Process.send_after(self(), :update_sim, @simulation_update_rate)
+
+        {:noreply, sector}
     end
   end
 
