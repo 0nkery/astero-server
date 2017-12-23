@@ -27,7 +27,9 @@ defmodule Sector.Simulation do
     {x_bound, y_bound} = {width / 2.0, height / 2.0}
 
     asteroids = for {id, %Asteroid{velocity: v, pos: p} = asteroid} <- asteroids, into: %{} do
-      {cx, cy} = {p.x + 16, p.y - 16}
+      cx = if p.x > 0, do: p.x + 16.0, else: p.x - 16.0
+      cy = if p.y > 0, do: p.y + 16.0, else: p.y - 16.0
+
       v = cond do
         cx > x_bound or cx < -x_bound ->
           Math.reflect_vector(v, {height, 0})
