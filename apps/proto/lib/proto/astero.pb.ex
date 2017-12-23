@@ -173,11 +173,11 @@ defmodule Astero.Input do
   use Protobuf, syntax: :proto2
 
   @type t :: %__MODULE__{
-    event: integer
+    turn: float
   }
-  defstruct [:event]
+  defstruct [:turn]
 
-  field :event, 1, required: true, type: Astero.InputEvent, enum: true
+  field :turn, 1, optional: true, type: :float
 end
 
 defmodule Astero.Client do
@@ -217,12 +217,4 @@ defmodule Astero.Entity do
 
   field :UNKNOWN_ENTITY, 0
   field :ASTEROID, 1
-end
-
-defmodule Astero.InputEvent do
-  use Protobuf, enum: true, syntax: :proto2
-
-  field :UNKNOWN_EVENT, 0
-  field :TURN_START, 1
-  field :TURN_STOP, 2
 end
