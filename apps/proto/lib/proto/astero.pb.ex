@@ -173,11 +173,11 @@ defmodule Astero.Input do
   use Protobuf, syntax: :proto2
 
   @type t :: %__MODULE__{
-    turn: float
+    turn: integer
   }
   defstruct [:turn]
 
-  field :turn, 1, optional: true, type: :float
+  field :turn, 1, optional: true, type: :int32
 end
 
 defmodule Astero.Client do
