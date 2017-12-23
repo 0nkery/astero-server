@@ -5,13 +5,26 @@ defmodule Sector.State do
 end
 
 defmodule Sector.Player do
-  @enforce_keys [:conn, :nickname, :coordinate]
+  @enforce_keys [:conn, :nickname, :body]
+
+  @player_size 12.0
+  @player_initial_vel Astero.Coord.new(x: 0.0, y: 0.0)
 
   defstruct [
     :conn,
     :nickname,
-    :coordinate,
+    :body,
   ]
+
+  def random(conn, nickname) do
+    coord = Sector.Coord.Impl.random(400, 300)
+
+    %Sector.Player {
+      conn: conn,
+      nickname: nickname,
+      body: Astero.Body.new(pos: coord, vel: @player_initial_vel, size: @player_size)
+    }
+  end
 end
 
 defmodule Sector do
@@ -20,7 +33,6 @@ defmodule Sector do
   alias Astero.JoinAck
   alias Astero.OtherJoined
   alias Astero.OtherLeft
-  alias Astero.Coord
   alias Astero.Asteroids
   alias Astero.Spawn
 
@@ -64,27 +76,20 @@ defmodule Sector do
   def handle_cast(msg, state) do
     case msg do
       {:joined, conn, player_id, nickname} ->
-        coord = generate_coordinates()
+        player = Player.random(conn, nickname)
+        Lobby.Connection.send(conn, {:join_ack, JoinAck.new(body: player.body, id: player_id)})
 
-        Lobby.Connection.send(conn, {:join_ack, JoinAck.new(pos: coord, id: player_id)})
-
-        joined = OtherJoined.new(id: player_id, nickname: nickname, pos: coord)
+        joined = OtherJoined.new(id: player_id, nickname: nickname, body: player.body)
         Lobby.broadcast({:other_joined, joined}, conn)
 
         Enum.each(state.players, fn {id, player} ->
-          older_player = OtherJoined.new(id: id, nickname: player.nickname, pos: player.coordinate)
+          older_player = OtherJoined.new(id: id, nickname: player.nickname, body: player.body)
           Lobby.Connection.send(conn, {:other_joined, older_player})
         end)
 
         asteroids = Asteroids.new(entities: state.asteroids)
         spawn_asteroids = Spawn.new(entity: {:asteroids, asteroids})
         Lobby.Connection.send(conn, {:spawn, spawn_asteroids})
-
-        player = %Player{
-          conn: conn,
-          nickname: nickname,
-          coordinate: coord,
-        }
 
         {:noreply, %{state | players: Map.put(state.players, player_id, player)}}
 
@@ -127,9 +132,5 @@ defmodule Sector do
 
         {:noreply, sector}
     end
-  end
-
-  defp generate_coordinates() do
-    Coord.new(x: :rand.uniform(400) - 400.0, y: :rand.uniform(300) - 300.0)
   end
 end

@@ -3,9 +3,9 @@ require Logger
 defmodule Sector.Asteroid.Impl do
   alias Sector.Util.Math
   alias Astero.Coord
-  alias Astero.Asteroid
 
   @max_asteroid_velocity 50.0
+  @asteroid_size 12.0
 
   def create_asteroids(count, min_radius, max_radius, coord \\ {0, 0})
       when min_radius < max_radius
@@ -25,6 +25,8 @@ defmodule Sector.Asteroid.Impl do
     {vx, vy} = Math.random_vector(@max_asteroid_velocity)
     velocity = Coord.new(x: vx, y: vy)
 
-    Asteroid.new(pos: coordinate, velocity: velocity, life: 2.0)
+    body = Astero.Body.new(pos: coordinate, vel: velocity, size: @asteroid_size)
+
+    Astero.Asteroid.new(body: body, life: 2.0)
   end
 end

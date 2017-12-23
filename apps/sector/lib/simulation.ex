@@ -1,6 +1,7 @@
 defmodule Sector.Simulation do
   alias Astero.Coord
   alias Astero.Asteroid
+  alias Astero.Body
 
   alias Sector.Util.Math
 
@@ -8,7 +9,7 @@ defmodule Sector.Simulation do
   @max_velocity_sq @max_velocity * @max_velocity
 
   def update(%Sector.State{asteroids: asteroids} = sector, dt, {width, height}) do
-    asteroids = for {id, %Asteroid{velocity: v, pos: p} = asteroid} <- asteroids, into: %{} do
+    asteroids = for {id, %Asteroid{body: %Body{vel: v, pos: p} = body} = asteroid} <- asteroids, into: %{} do
       norm_squared = v.x * v.x + v.y * v.y
 
       {vx, vy} = if norm_squared > @max_velocity_sq do
@@ -21,12 +22,12 @@ defmodule Sector.Simulation do
       {dvx, dvy} = {vx * dt, vy * dt}
       p = Coord.new(x: p.x + dvx, y: p.y + dvy)
 
-      {id, %{asteroid | velocity: v, pos: p}}
+      {id, %{asteroid | body: %{body | vel: v, pos: p}}}
     end
 
     {x_bound, y_bound} = {width / 2.0, height / 2.0}
 
-    asteroids = for {id, %Asteroid{velocity: v, pos: p} = asteroid} <- asteroids, into: %{} do
+    asteroids = for {id, %Asteroid{body: %Body{vel: v, pos: p} = body} = asteroid} <- asteroids, into: %{} do
       cx = if p.x > 0, do: p.x + 16.0, else: p.x - 16.0
       cy = if p.y > 0, do: p.y + 16.0, else: p.y - 16.0
 
@@ -38,7 +39,7 @@ defmodule Sector.Simulation do
         true -> v
       end
 
-      {id, %{asteroid | velocity: v}}
+      {id, %{asteroid | body: %{body | vel: v}}}
     end
 
     %{sector | asteroids: asteroids}

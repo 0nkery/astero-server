@@ -19,3 +19,13 @@ defmodule Sector.Util.Math do
     Coord.new(x: v.x - nx * proj, y: v.y - ny * proj)
   end
 end
+
+
+defmodule Sector.Coord.Impl do
+  def random(x_abs_bound, y_abs_bound) do
+    Astero.Coord.new(
+      x: :rand.uniform(x_abs_bound * 2) - x_abs_bound * 1.0,
+      y: :rand.uniform(y_abs_bound * 2) - y_abs_bound * 1.0
+    )
+  end
+end
