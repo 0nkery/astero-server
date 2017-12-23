@@ -17,7 +17,7 @@ defmodule Sector.Player do
   ]
 
   def random(conn, nickname) do
-    coord = Sector.Coord.Impl.random(400, 300)
+    coord = Astero.Coord.Impl.random(400, 300)
 
     %Sector.Player {
       conn: conn,
@@ -35,10 +35,10 @@ defmodule Sector do
   alias Astero.OtherLeft
   alias Astero.Asteroids
   alias Astero.Spawn
+  alias Astero.Asteroid
 
   alias Sector.State
   alias Sector.Player
-  alias Sector.Asteroid
 
   alias Sector.Simulation
 

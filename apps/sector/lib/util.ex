@@ -21,7 +21,7 @@ defmodule Sector.Util.Math do
 end
 
 
-defmodule Sector.Coord.Impl do
+defmodule Astero.Coord.Impl do
   def random(x_abs_bound, y_abs_bound) do
     Astero.Coord.new(
       x: :rand.uniform(x_abs_bound * 2) - x_abs_bound * 1.0,

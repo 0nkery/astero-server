@@ -1,6 +1,6 @@
 require Logger
 
-defmodule Sector.Asteroid.Impl do
+defmodule Astero.Asteroid.Impl do
   alias Sector.Util.Math
   alias Astero.Coord
 
