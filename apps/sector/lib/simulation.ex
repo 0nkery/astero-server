@@ -30,9 +30,9 @@ defmodule Sector.Simulation do
       {cx, cy} = {p.x + 16, p.y - 16}
       v = cond do
         cx > x_bound or cx < -x_bound ->
-          Math.reflect_vector(v, {0, height})
+          Math.reflect_vector(v, {height, 0})
         cy > y_bound or cy < -y_bound ->
-          Math.reflect_vector(v, {width, 0})
+          Math.reflect_vector(v, {0, width})
         true -> v
       end
 
