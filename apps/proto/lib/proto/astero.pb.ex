@@ -162,11 +162,11 @@ defmodule Astero.SimUpdates do
   use Protobuf, syntax: :proto2
 
   @type t :: %__MODULE__{
-    updates: [Astero.SimUpdates.t]
+    updates: [Astero.SimUpdate.t]
   }
   defstruct [:updates]
 
-  field :updates, 1, repeated: true, type: Astero.SimUpdates
+  field :updates, 1, repeated: true, type: Astero.SimUpdate
 end
 
 defmodule Astero.Client do
