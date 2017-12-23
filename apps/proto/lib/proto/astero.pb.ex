@@ -11,19 +11,36 @@ defmodule Astero.Coord do
   field :y, 2, required: true, type: :float
 end
 
+defmodule Astero.Body do
+  use Protobuf, syntax: :proto2
+
+  @type t :: %__MODULE__{
+    pos:  Astero.Coord.t,
+    vel:  Astero.Coord.t,
+    rot:  float,
+    rvel: float,
+    size: float
+  }
+  defstruct [:pos, :vel, :rot, :rvel, :size]
+
+  field :pos, 1, required: true, type: Astero.Coord
+  field :vel, 2, required: true, type: Astero.Coord
+  field :rot, 3, optional: true, type: :float
+  field :rvel, 4, optional: true, type: :float
+  field :size, 5, optional: true, type: :float
+end
+
 defmodule Astero.Asteroid do
   use Protobuf, syntax: :proto2
 
   @type t :: %__MODULE__{
-    pos:      Astero.Coord.t,
-    velocity: Astero.Coord.t,
-    life:     float
+    body: Astero.Body.t,
+    life: float
   }
-  defstruct [:pos, :velocity, :life]
+  defstruct [:body, :life]
 
-  field :pos, 1, required: true, type: Astero.Coord
-  field :velocity, 2, required: true, type: Astero.Coord
-  field :life, 5, required: true, type: :float
+  field :body, 1, required: true, type: Astero.Body
+  field :life, 2, required: true, type: :float
 end
 
 defmodule Astero.Asteroids do
@@ -50,6 +67,21 @@ defmodule Astero.Asteroids.EntitiesEntry do
   field :value, 2, optional: true, type: Astero.Asteroid
 end
 
+defmodule Astero.SimUpdate do
+  use Protobuf, syntax: :proto2
+
+  @type t :: %__MODULE__{
+    entity: integer,
+    id:     non_neg_integer,
+    body:   Astero.Body.t
+  }
+  defstruct [:entity, :id, :body]
+
+  field :entity, 1, required: true, type: Astero.Entity, enum: true
+  field :id, 2, required: true, type: :uint32
+  field :body, 3, required: true, type: Astero.Body
+end
+
 defmodule Astero.Join do
   use Protobuf, syntax: :proto2
 
@@ -65,13 +97,13 @@ defmodule Astero.JoinAck do
   use Protobuf, syntax: :proto2
 
   @type t :: %__MODULE__{
-    id:  non_neg_integer,
-    pos: Astero.Coord.t
+    id:   non_neg_integer,
+    body: Astero.Body.t
   }
-  defstruct [:id, :pos]
+  defstruct [:id, :body]
 
   field :id, 1, required: true, type: :uint32
-  field :pos, 2, required: true, type: Astero.Coord
+  field :body, 2, required: true, type: Astero.Body
 end
 
 defmodule Astero.OtherJoined do
@@ -80,13 +112,13 @@ defmodule Astero.OtherJoined do
   @type t :: %__MODULE__{
     id:       non_neg_integer,
     nickname: String.t,
-    pos:      Astero.Coord.t
+    body:     Astero.Body.t
   }
-  defstruct [:id, :nickname, :pos]
+  defstruct [:id, :nickname, :body]
 
   field :id, 1, required: true, type: :uint32
   field :nickname, 2, required: true, type: :string
-  field :pos, 3, required: true, type: Astero.Coord
+  field :body, 3, required: true, type: Astero.Body
 end
 
 defmodule Astero.Leave do
@@ -107,6 +139,13 @@ defmodule Astero.OtherLeft do
   field :id, 1, required: true, type: :uint32
 end
 
+defmodule Astero.Heartbeat do
+  use Protobuf, syntax: :proto2
+
+  defstruct []
+
+end
+
 defmodule Astero.Spawn do
   use Protobuf, syntax: :proto2
 
@@ -119,11 +158,15 @@ defmodule Astero.Spawn do
   field :asteroids, 1, optional: true, type: Astero.Asteroids, oneof: 0
 end
 
-defmodule Astero.Heartbeat do
+defmodule Astero.SimUpdates do
   use Protobuf, syntax: :proto2
 
-  defstruct []
+  @type t :: %__MODULE__{
+    updates: [Astero.SimUpdates.t]
+  }
+  defstruct [:updates]
 
+  field :updates, 1, repeated: true, type: Astero.SimUpdates
 end
 
 defmodule Astero.Client do
@@ -152,6 +195,14 @@ defmodule Astero.Server do
   field :join_ack, 1, optional: true, type: Astero.JoinAck, oneof: 0
   field :other_joined, 2, optional: true, type: Astero.OtherJoined, oneof: 0
   field :other_left, 3, optional: true, type: Astero.OtherLeft, oneof: 0
-  field :spawn, 4, optional: true, type: Astero.Spawn, oneof: 0
-  field :heartbeat, 5, optional: true, type: Astero.Heartbeat, oneof: 0
+  field :heartbeat, 4, optional: true, type: Astero.Heartbeat, oneof: 0
+  field :spawn, 5, optional: true, type: Astero.Spawn, oneof: 0
+  field :sim_updates, 6, optional: true, type: Astero.SimUpdates, oneof: 0
+end
+
+defmodule Astero.Entity do
+  use Protobuf, enum: true, syntax: :proto2
+
+  field :UNKNOWN, 0
+  field :ASTEROID, 1
 end
