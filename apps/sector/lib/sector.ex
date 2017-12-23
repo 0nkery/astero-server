@@ -48,7 +48,7 @@ defmodule Sector do
   @initial_asteroids_count 5
   @max_asteroids_count 10
   @asteroid_spawn_rate 5000
-  @simulation_update_rate 100
+  @simulation_update_rate 33
 
   # Client
   def start_link(opts \\ []) do
