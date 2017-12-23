@@ -7,7 +7,7 @@ end
 defmodule Sector.Player do
   @enforce_keys [:conn, :nickname, :body]
 
-  @player_size 12.0
+  @player_size 32.0
   @player_initial_vel Astero.Coord.new(x: 0.0, y: 0.0)
 
   defstruct [

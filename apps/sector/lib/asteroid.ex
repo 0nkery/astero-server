@@ -5,7 +5,7 @@ defmodule Astero.Asteroid.Impl do
   alias Astero.Coord
 
   @max_asteroid_velocity 50.0
-  @asteroid_size 12.0
+  @asteroid_size 32.0
 
   def create_asteroids(count, min_radius, max_radius, coord \\ {0, 0})
       when min_radius < max_radius
