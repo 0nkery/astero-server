@@ -15,16 +15,16 @@ defmodule LobbyTest.Helpers do
     :gen_udp.send(socket, @server_address, @server_port, packet)
   end
 
-  def recv_until(socket, max_attempts, timeout, check) do
-    {:ok, {_, _, packet}} = :gen_udp.recv(socket, 40, timeout)
+  def recv_until(socket, check) do
+    {:ok, {_, _, packet}} = :gen_udp.recv(socket, 40, 500)
     %Server{msg: data} = Server.decode(packet)
     check_result = check.(data)
 
     case check_result do
-      _ when max_attempts == 0 -> false
       true -> true
       {true, data} -> {true, data}
-      false -> recv_until(socket, max_attempts - 1, timeout, check)
+
+      false -> recv_until(socket, check)
     end
   end
 
@@ -32,7 +32,7 @@ defmodule LobbyTest.Helpers do
     join = {:join, Join.new(nickname: clients.first.nickname)}
     send_to_server(clients.first.socket, join)
 
-    {true, first_id} = recv_until(clients.first.socket, 5, 500, fn data ->
+    {true, first_id} = recv_until(clients.first.socket, fn data ->
       case data do
         {:join_ack, %JoinAck{id: first_id}} -> {true, first_id}
         _ -> false
@@ -42,7 +42,7 @@ defmodule LobbyTest.Helpers do
     join = {:join, Join.new(nickname: clients.second.nickname)}
     send_to_server(clients.second.socket, join)
 
-    {true, second_id} = recv_until(clients.second.socket, 5, 500, fn data ->
+    {true, second_id} = recv_until(clients.second.socket, fn data ->
       case data do
         {:join_ack, %JoinAck{id: second_id}} -> {true, second_id}
         _ -> false
@@ -85,7 +85,7 @@ defmodule LobbyTest do
   test "notifies other connections about the new one", clients do
     {first_id, second_id} = Helpers.connect(clients)
 
-    assert Helpers.recv_until(clients.first.socket, 5, 500, fn data ->
+    assert Helpers.recv_until(clients.first.socket, fn data ->
       case data do
         {:other_joined, %Astero.OtherJoined{id: ^second_id, nickname: broadcasted_nickname}} ->
           assert broadcasted_nickname == clients.second.nickname
@@ -95,7 +95,7 @@ defmodule LobbyTest do
       end
     end)
 
-    assert Helpers.recv_until(clients.second.socket, 5, 500, fn data ->
+    assert Helpers.recv_until(clients.second.socket, fn data ->
       case data do
         {:other_joined, %Astero.OtherJoined{id: ^first_id, nickname: broadcasted_nickname}} ->
             assert broadcasted_nickname == clients.first.nickname
@@ -134,7 +134,7 @@ defmodule LobbyTest do
 
     Helpers.disconnect(clients.second)
 
-    assert Helpers.recv_until(clients.first.socket, 5, 500, fn data ->
+    assert Helpers.recv_until(clients.first.socket, fn data ->
       case data do
         {:other_left, %Astero.OtherLeft{id: ^second_id}} -> true
 
@@ -150,7 +150,7 @@ defmodule LobbyTest do
 
     heartbeat = {:heartbeat, Astero.Heartbeat.new()}
 
-    assert Helpers.recv_until(clients.first.socket, 10, 6000, fn data ->
+    assert Helpers.recv_until(clients.first.socket, fn data ->
       case data do
         {:heartbeat, %Astero.Heartbeat{}} ->
           Helpers.send_to_server(clients.first.socket, heartbeat)
@@ -167,7 +167,7 @@ defmodule LobbyTest do
   test "sending asteroid data to newly connected players", clients do
     {_, _} = Helpers.connect(clients)
 
-    assert Helpers.recv_until(clients.first.socket, 5, 1000, fn data ->
+    assert Helpers.recv_until(clients.first.socket, fn data ->
       case data do
         {:spawn, %Astero.Spawn{entity: {:asteroids, asteroids}}} ->
           assert Enum.count(asteroids.entities) == 5
