@@ -36,6 +36,9 @@ defmodule Sector do
   alias Astero.Asteroids
   alias Astero.Spawn
   alias Astero.Asteroid
+  alias Astero.SimUpdates
+  alias Astero.SimUpdate
+  alias Astero.Entity
 
   alias Sector.State
   alias Sector.Player
@@ -129,6 +132,15 @@ defmodule Sector do
         sector = Simulation.update(sector, @simulation_update_rate / 1000.0, {800.0, 600.0})
 
         Process.send_after(self(), :update_sim, @simulation_update_rate)
+
+        sim_updates = Enum.map(sector.asteroids, fn {id, asteroid} ->
+          SimUpdate.new(
+            entity: Entity.value(:ASTEROID),
+            id: id,
+            body: asteroid.body,
+          )
+        end)
+        Lobby.broadcast({:sim_updates, SimUpdates.new(updates: sim_updates)})
 
         {:noreply, sector}
     end
