@@ -137,7 +137,7 @@ defmodule Sector do
           SimUpdate.new(
             entity: Entity.value(:ASTEROID),
             id: id,
-            body: asteroid.body,
+            body: %{asteroid.body | size: nil},
           )
         end)
         Lobby.broadcast({:sim_updates, SimUpdates.new(updates: sim_updates)})
