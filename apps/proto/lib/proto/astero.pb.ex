@@ -169,6 +169,17 @@ defmodule Astero.SimUpdates do
   field :updates, 1, repeated: true, type: Astero.SimUpdate
 end
 
+defmodule Astero.Input do
+  use Protobuf, syntax: :proto2
+
+  @type t :: %__MODULE__{
+    event: integer
+  }
+  defstruct [:event]
+
+  field :event, 1, required: true, type: Astero.InputEvent, enum: true
+end
+
 defmodule Astero.Client do
   use Protobuf, syntax: :proto2
 
@@ -181,6 +192,7 @@ defmodule Astero.Client do
   field :join, 1, optional: true, type: Astero.Join, oneof: 0
   field :leave, 2, optional: true, type: Astero.Leave, oneof: 0
   field :heartbeat, 3, optional: true, type: Astero.Heartbeat, oneof: 0
+  field :input, 4, optional: true, type: Astero.Input, oneof: 0
 end
 
 defmodule Astero.Server do
@@ -203,6 +215,14 @@ end
 defmodule Astero.Entity do
   use Protobuf, enum: true, syntax: :proto2
 
-  field :UNKNOWN, 0
+  field :UNKNOWN_ENTITY, 0
   field :ASTEROID, 1
+end
+
+defmodule Astero.InputEvent do
+  use Protobuf, enum: true, syntax: :proto2
+
+  field :UNKNOWN_EVENT, 0
+  field :TURN_START, 1
+  field :TURN_STOP, 2
 end
