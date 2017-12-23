@@ -1,9 +1,5 @@
 require Logger
 
-defmodule Sector.State do
-  defstruct players: %{}, asteroids: %{}
-end
-
 defmodule Sector.Player do
   @enforce_keys [:conn, :nickname, :body]
 
@@ -14,6 +10,7 @@ defmodule Sector.Player do
     :conn,
     :nickname,
     :body,
+    :input,
   ]
 
   def random(conn, nickname) do
@@ -24,6 +21,12 @@ defmodule Sector.Player do
       nickname: nickname,
       body: Astero.Body.new(pos: coord, vel: @player_initial_vel, size: @player_size)
     }
+  end
+
+  def update_input(player, %Astero.Input{turn: turn} = input) do
+    turn = if turn == nil, do: input.turn, else: turn
+
+    %{player | input: Astero.Input.new(turn: turn)}
   end
 end
 
@@ -39,6 +42,7 @@ defmodule Sector do
   alias Astero.SimUpdates
   alias Astero.SimUpdate
   alias Astero.Entity
+  alias Astero.Input
 
   alias Sector.State
   alias Sector.Player
@@ -63,6 +67,10 @@ defmodule Sector do
     GenServer.cast(Sector, {:left, conn, player_id})
   end
 
+  def handle(msg, player_id) do
+    GenServer.cast(Sector, {:handle, msg, player_id})
+  end
+
   # Server
   def init(:ok) do
     Logger.info("Started #{__MODULE__}")
@@ -76,7 +84,7 @@ defmodule Sector do
     {:ok, %State{asteroids: asteroids}}
   end
 
-  def handle_cast(msg, state) do
+  def handle_cast(msg, sector) do
     case msg do
       {:joined, conn, player_id, nickname} ->
         player = Player.random(conn, nickname)
@@ -85,24 +93,29 @@ defmodule Sector do
         joined = OtherJoined.new(id: player_id, nickname: nickname, body: player.body)
         Lobby.broadcast({:other_joined, joined}, conn)
 
-        Enum.each(state.players, fn {id, player} ->
+        Enum.each(sector.players, fn {id, player} ->
           older_player = OtherJoined.new(id: id, nickname: player.nickname, body: player.body)
           Lobby.Connection.send(conn, {:other_joined, older_player})
         end)
 
-        asteroids = Asteroids.new(entities: state.asteroids)
+        asteroids = Asteroids.new(entities: sector.asteroids)
         spawn_asteroids = Spawn.new(entity: {:asteroids, asteroids})
         Lobby.Connection.send(conn, {:spawn, spawn_asteroids})
 
-        {:noreply, %{state | players: Map.put(state.players, player_id, player)}}
+        {:noreply, %{sector | players: Map.put(sector.players, player_id, player)}}
 
       {:left, conn, player_id} ->
         player_left = OtherLeft.new(id: player_id)
         Lobby.broadcast({:other_left, player_left}, conn)
 
-        {_player, players} = Map.pop(state.players, player_id)
+        {_player, players} = Map.pop(sector.players, player_id)
 
-        {:noreply, %{state | players: players}}
+        {:noreply, %{sector | players: players}}
+
+      {:handle, msg, player_id} ->
+        sector = handle_msg(sector, msg, player_id)
+
+        {:noreply, sector}
     end
   end
 
@@ -129,7 +142,7 @@ defmodule Sector do
         {:noreply, sector}
 
       :update_sim ->
-        sector = Simulation.update(sector, @simulation_update_rate / 1000.0, {800.0, 600.0})
+        sector = State.update(sector, @simulation_update_rate / 1000.0, {800.0, 600.0})
 
         Process.send_after(self(), :update_sim, @simulation_update_rate)
 
@@ -143,6 +156,19 @@ defmodule Sector do
         Lobby.broadcast({:sim_updates, SimUpdates.new(updates: sim_updates)})
 
         {:noreply, sector}
+    end
+  end
+
+  defp handle_msg(sector, msg, player_id) do
+    case msg do
+      {:input, input} ->
+        players = Map.get_and_update(sector.players, player_id, fn player ->
+          updated = Player.update_input(player, input)
+
+          {player, updated}
+        end)
+
+        %{sector | players: players}
     end
   end
 end

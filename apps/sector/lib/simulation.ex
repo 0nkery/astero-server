@@ -1,4 +1,7 @@
-defmodule Sector.Simulation do
+defmodule Sector.State do
+
+  defstruct players: %{}, asteroids: %{}
+
   alias Astero.Coord
   alias Astero.Asteroid
   alias Astero.Body

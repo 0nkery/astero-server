@@ -118,6 +118,8 @@ defmodule Lobby.Connection do
         player
 
       %Client{msg: {:heartbeat, %Astero.Heartbeat{}}} -> player
+
+      %Client{msg: other} -> Sector.handle(other, player.conn_id)
     end
   end
 
