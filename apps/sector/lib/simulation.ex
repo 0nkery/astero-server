@@ -1,6 +1,6 @@
 defmodule Sector.State do
 
-  defstruct players: %{}, asteroids: %{}
+  defstruct players: %{}, asteroids: %{}, frame: 1
 
   alias Astero.Coord
   alias Astero.Asteroid
@@ -12,7 +12,7 @@ defmodule Sector.State do
   @max_velocity 250.0
   @max_velocity_sq @max_velocity * @max_velocity
 
-  def update(%Sector.State{} = sector, dt, {width, height}) do
+  def update(%Sector.State{frame: frame} = sector, dt, {width, height}) do
     {x_bound, y_bound} = {width / 2.0, height / 2.0}
 
     asteroids = for {id, %Asteroid{} = asteroid} <- sector.asteroids, into: %{} do
@@ -30,7 +30,9 @@ defmodule Sector.State do
       {id, %{player | body: body}}
     end
 
-    %{sector | asteroids: asteroids, players: players}
+    frame = if frame == 30, do: 1, else: frame + 1
+
+    %{sector | asteroids: asteroids, players: players, frame: frame}
   end
 
   def rotate_body(%Body{rvel: rvel, rot: rot} = body, dt, direction) do
