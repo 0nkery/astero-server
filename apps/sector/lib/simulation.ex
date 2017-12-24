@@ -11,17 +11,13 @@ defmodule Sector.State do
   @max_velocity 250.0
   @max_velocity_sq @max_velocity * @max_velocity
 
-  def update(%Sector.State{asteroids: asteroids} = sector, dt, {width, height}) do
-    asteroids = for {id, %Asteroid{body: body} = asteroid} <- asteroids, into: %{} do
-      body = update_body(body, dt)
-
-      {id, %{asteroid | body: body}}
-    end
-
+  def update(%Sector.State{} = sector, dt, {width, height}) do
     {x_bound, y_bound} = {width / 2.0, height / 2.0}
 
-    asteroids = for {id, %Asteroid{body: body} = asteroid} <- asteroids, into: %{} do
-      body = wrap_body(body, x_bound, y_bound)
+    asteroids = for {id, %Asteroid{} = asteroid} <- sector.asteroids, into: %{} do
+      body = asteroid.body
+      |> update_body(dt)
+      |> wrap_body(x_bound, y_bound)
 
       {id, %{asteroid | body: body}}
     end
