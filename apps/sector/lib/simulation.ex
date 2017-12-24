@@ -55,9 +55,10 @@ defmodule Sector.State do
     %{body | vel: v, pos: p}
   end
 
-  def wrap_body(%Body{vel: v, pos: p} = body, x_bound, y_bound) do
-    cx = if p.x > 0, do: p.x + 16.0, else: p.x - 16.0
-    cy = if p.y > 0, do: p.y + 16.0, else: p.y - 16.0
+  def wrap_body(%Body{vel: v, pos: p, size: size} = body, x_bound, y_bound) do
+    half_size = size / 2.0
+    cx = if p.x > 0, do: p.x + half_size, else: p.x - half_size
+    cy = if p.y > 0, do: p.y + half_size, else: p.y - half_size
 
     v = cond do
       cx > x_bound or cx < -x_bound ->
