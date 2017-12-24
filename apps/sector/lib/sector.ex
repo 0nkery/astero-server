@@ -51,6 +51,7 @@ defmodule Sector do
   alias Astero.SimUpdates
   alias Astero.SimUpdate
   alias Astero.Entity
+  alias Astero.OtherInput
 
   alias Sector.State
   alias Sector.Player
@@ -170,6 +171,8 @@ defmodule Sector do
       {:input, input} ->
         players = Map.get_and_update(sector.players, player_id, fn player ->
           updated = Player.update_input(player, input)
+
+          Lobby.broadcast({:other_input, OtherInput.new(id: player_id, input: updated.input)})
 
           {player, updated}
         end)
