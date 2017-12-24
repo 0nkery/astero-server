@@ -42,12 +42,9 @@ defmodule Sector do
   alias Astero.SimUpdates
   alias Astero.SimUpdate
   alias Astero.Entity
-  alias Astero.Input
 
   alias Sector.State
   alias Sector.Player
-
-  alias Sector.Simulation
 
   @initial_asteroids_count 5
   @max_asteroids_count 10
