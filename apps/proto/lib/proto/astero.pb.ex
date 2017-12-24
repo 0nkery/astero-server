@@ -231,4 +231,5 @@ defmodule Astero.Entity do
 
   field :UNKNOWN_ENTITY, 0
   field :ASTEROID, 1
+  field :PLAYER, 2
 end
