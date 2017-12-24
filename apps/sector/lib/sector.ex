@@ -1,10 +1,12 @@
 require Logger
 
 defmodule Sector.Player do
-  @enforce_keys [:conn, :nickname, :body]
+  @enforce_keys [:conn, :nickname, :body, :input]
 
   @player_size 32.0
   @player_initial_vel Astero.Coord.new(x: 0.0, y: 0.0)
+  @player_initial_rot 0.0
+  @player_rvel 2.05
 
   defstruct [
     :conn,
@@ -19,14 +21,21 @@ defmodule Sector.Player do
     %Sector.Player {
       conn: conn,
       nickname: nickname,
-      body: Astero.Body.new(pos: coord, vel: @player_initial_vel, size: @player_size)
+      body: Astero.Body.new(
+        pos: coord,
+        vel: @player_initial_vel,
+        size: @player_size,
+        rvel: @player_rvel,
+        rot: @player_initial_rot,
+      ),
+      input: Astero.Input.new(turn: 0),
     }
   end
 
-  def update_input(player, %Astero.Input{turn: turn} = input) do
-    turn = if turn == nil, do: input.turn, else: turn
+  def update_input(player, %Astero.Input{turn: turn}) do
+    turn = if turn == nil, do: player.turn, else: turn
 
-    %{player | input: Astero.Input.new(turn: turn)}
+    %{player | input: %{player.input | turn: turn}}
   end
 end
 

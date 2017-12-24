@@ -6,6 +6,7 @@ defmodule Sector.State do
   alias Astero.Asteroid
   alias Astero.Body
 
+  alias Sector.Player
   alias Sector.Util.Math
 
   @max_velocity 250.0
@@ -16,13 +17,26 @@ defmodule Sector.State do
 
     asteroids = for {id, %Asteroid{} = asteroid} <- sector.asteroids, into: %{} do
       body = asteroid.body
-      |> update_body(dt)
-      |> wrap_body(x_bound, y_bound)
+        |> update_body(dt)
+        |> wrap_body(x_bound, y_bound)
 
       {id, %{asteroid | body: body}}
     end
 
-    %{sector | asteroids: asteroids}
+    players = for {id, %Player{} = player} <- sector.players, into: %{} do
+      body = player.body
+        |> rotate_body(dt, player.input.turn)
+
+      {id, %{player | body: body}}
+    end
+
+    %{sector | asteroids: asteroids, players: players}
+  end
+
+  def rotate_body(%Body{rvel: rvel, rot: rot} = body, dt, direction) do
+    rot = rot + dt * rvel * direction
+
+    %{body | rot: rot}
   end
 
   def update_body(%Body{vel: v, pos: p} = body, dt) do
