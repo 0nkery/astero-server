@@ -193,4 +193,30 @@ defmodule LobbyTest do
       end
     end)
   end
+
+  test "broadcasting simulation data", clients do
+    {_, _} = Helpers.connect(clients)
+
+    assert Helpers.recv_until(clients.first.socket, fn data ->
+      case data do
+        {:sim_updates, sim_updates} ->
+          Enum.any?(sim_updates.updates, fn upd ->
+            upd.entity == Astero.Entity.value(:ASTEROID)
+          end)
+
+        _ -> false
+      end
+    end)
+
+    assert Helpers.recv_until(clients.first.socket, fn data ->
+      case data do
+        {:sim_updates, sim_updates} ->
+          Enum.any?(sim_updates.updates, fn upd ->
+            upd.entity == Astero.Entity.value(:PLAYER)
+          end)
+
+        _ -> false
+      end
+    end)
+  end
 end
