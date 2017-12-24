@@ -3,7 +3,7 @@ require Logger
 defmodule Sector.Player do
   @enforce_keys [:conn, :nickname, :body, :input]
 
-  @player_size 32.0
+  @player_size 25.0
   @player_initial_vel Astero.Coord.new(x: 0.0, y: 0.0)
   @player_initial_rot 0.0
   @player_rvel 2.05
