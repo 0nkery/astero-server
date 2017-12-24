@@ -14,7 +14,7 @@ defmodule Sector.Util.Math do
   end
 
   def reflect_vector(%Coord{} = v, {nx, ny}) do
-    proj = 2 * (v.x * nx + v.y * ny) / (nx * nx + ny * ny)
+    proj = 2 * (v.x * nx + v.y * ny)
 
     Coord.new(x: v.x - nx * proj, y: v.y - ny * proj)
   end

@@ -60,12 +60,18 @@ defmodule Sector.State do
     cx = if p.x > 0, do: p.x + half_size, else: p.x - half_size
     cy = if p.y > 0, do: p.y + half_size, else: p.y - half_size
 
-    v = cond do
-      cx > x_bound or cx < -x_bound ->
-        Math.reflect_vector(v, {y_bound * 2.0, 0})
-      cy > y_bound or cy < -y_bound ->
-        Math.reflect_vector(v, {0, x_bound * 2.0})
-      true -> v
+    {nx, ny} = cond do
+      cx > x_bound -> {-1, 0}
+      cx < -x_bound -> {1, 0}
+      cy > y_bound -> {0, -1}
+      cy < -y_bound -> {0, 1}
+      true -> {0, 0}
+    end
+
+    v = if (nx * v.x + ny * v.y) <= 0.0 do
+      Math.reflect_vector(v, {nx, ny})
+    else
+      v
     end
 
     %{body | vel: v}
