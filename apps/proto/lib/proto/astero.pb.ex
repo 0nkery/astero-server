@@ -177,7 +177,7 @@ defmodule Astero.Input do
   }
   defstruct [:turn]
 
-  field :turn, 1, optional: true, type: :int32
+  field :turn, 1, optional: true, type: :sint32
 end
 
 defmodule Astero.Client do
