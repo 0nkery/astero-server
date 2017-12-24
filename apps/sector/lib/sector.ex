@@ -169,7 +169,7 @@ defmodule Sector do
   defp handle_msg(sector, msg, player_id) do
     case msg do
       {:input, input} ->
-        players = Map.get_and_update(sector.players, player_id, fn player ->
+        {_old, players} = Map.get_and_update(sector.players, player_id, fn player ->
           updated = Player.update_input(player, input)
 
           Lobby.broadcast({:other_input, OtherInput.new(id: player_id, input: updated.input)})
