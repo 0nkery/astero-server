@@ -176,4 +176,21 @@ defmodule LobbyTest do
       end
     end)
   end
+
+  test "broadcasting input events", clients do
+    {_first_id, second_id} = Helpers.connect(clients)
+
+    turn_dir = -1
+    turn = {:input, Astero.Input.new(turn: turn_dir)}
+    Helpers.send_to_server(clients.second.socket, turn)
+
+    assert Helpers.recv_until(clients.first.socket, fn data ->
+      case data do
+        {:other_input, %Astero.OtherInput{id: ^second_id, input: input}} ->
+          assert input.turn == turn_dir
+          true
+        _ -> false
+      end
+    end)
+  end
 end
