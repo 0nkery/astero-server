@@ -180,6 +180,19 @@ defmodule Astero.Input do
   field :turn, 1, optional: true, type: :sint32
 end
 
+defmodule Astero.OtherInput do
+  use Protobuf, syntax: :proto2
+
+  @type t :: %__MODULE__{
+    id:    non_neg_integer,
+    input: Astero.Input.t
+  }
+  defstruct [:id, :input]
+
+  field :id, 1, required: true, type: :uint32
+  field :input, 2, required: true, type: Astero.Input
+end
+
 defmodule Astero.Client do
   use Protobuf, syntax: :proto2
 
@@ -210,6 +223,7 @@ defmodule Astero.Server do
   field :heartbeat, 4, optional: true, type: Astero.Heartbeat, oneof: 0
   field :spawn, 5, optional: true, type: Astero.Spawn, oneof: 0
   field :sim_updates, 6, optional: true, type: Astero.SimUpdates, oneof: 0
+  field :other_input, 7, optional: true, type: Astero.OtherInput, oneof: 0
 end
 
 defmodule Astero.Entity do
