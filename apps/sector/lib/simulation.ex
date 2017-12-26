@@ -12,17 +12,17 @@ defmodule Sector.State do
   @max_velocity 250.0
   @max_velocity_sq @max_velocity * @max_velocity
 
-  def update(%Sector.State{frame: frame} = sector, dt, {x_bound, y_bound} = bounds) do
+  def update(%Sector.State{frame: frame} = sector, dt, bounds) do
     asteroids = for {id, %Asteroid{} = asteroid} <- sector.asteroids, into: %{} do
       body = asteroid.body
         |> update_body(dt)
-        |> wrap_body(x_bound, y_bound)
+        |> wrap_body(bounds)
 
       {id, %{asteroid | body: body}}
     end
 
     players = for {id, %Player{} = player} <- sector.players, into: %{} do
-      updated = update_player(player, dt, bounds)
+      updated = Player.update_body(player, dt, bounds)
 
       {id, updated}
     end
@@ -30,16 +30,6 @@ defmodule Sector.State do
     frame = if frame == 30, do: 1, else: frame + 1
 
     %{sector | asteroids: asteroids, players: players, frame: frame}
-  end
-
-  def update_player(player, dt, {x_bound, y_bound}) do
-    body = player.body
-      |> rotate_body(dt, player.input.turn)
-      |> accelerate_body(dt, player.input.accel, player.acceleration)
-      |> update_body(dt)
-      |> wrap_body(x_bound, y_bound)
-
-    %{player | body: body}
   end
 
   def rotate_body(%Body{rvel: rvel, rot: rot} = body, dt, direction) do
@@ -82,7 +72,7 @@ defmodule Sector.State do
     %{body | vel: v, pos: p}
   end
 
-  def wrap_body(%Body{vel: v, pos: p, size: size} = body, x_bound, y_bound) do
+  def wrap_body(%Body{vel: v, pos: p, size: size} = body, {x_bound, y_bound}) do
     half_size = size / 2.0
     cx = if p.x > 0, do: p.x + half_size, else: p.x - half_size
     cy = if p.y > 0, do: p.y + half_size, else: p.y - half_size

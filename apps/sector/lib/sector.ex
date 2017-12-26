@@ -146,8 +146,7 @@ defmodule Sector do
       {:input, input} ->
         {_old, players} = Map.get_and_update(sector.players, player_id, fn player ->
           updated = player
-          |> Player.update_input(input)
-          |> Player.update_body(@world_bounds)
+          |> Player.update_input(input, @world_bounds)
 
           Lobby.broadcast({:other_input, OtherInput.new(id: player_id, input: updated.input)}, player.conn)
 

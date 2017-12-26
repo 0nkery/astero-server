@@ -15,7 +15,6 @@ defmodule Sector.Player do
     :input,
     acceleration: {60.0, 10.0},
     latency: 0,
-    last_input_update_time: 0,
   ]
 
   def random(conn, nickname, {x_bound, y_bound}) do
@@ -35,33 +34,34 @@ defmodule Sector.Player do
     }
   end
 
-  def update_input(player, %Astero.Input{} = update) do
+  def update_input(player, %Astero.Input{} = update, world_bounds) do
     turn = if update.turn == nil, do: player.input.turn, else: update.turn
     accel = if update.accel == nil, do: player.input.accel, else: update.accel
 
-    %{
-      player |
-      input: %{player.input | turn: turn, accel: accel},
-      last_input_update_time: System.system_time(:milliseconds),
-    }
+    player = %{player | input: %{player.input | turn: turn, accel: accel}}
+
+    cond do
+      turn == 0 or accel == 0 -> player
+      true ->
+        dt = player.latency / 1000.0
+        update_body(player, dt, world_bounds)
+    end
   end
 
   def update_latency(player, then) do
     now = System.system_time(:milliseconds)
     latency = (now - then) / 2
 
-    Logger.debug(latency)
-
     %{player | latency: latency}
   end
 
-  def update_body(player, world_bounds) do
-    cond do
-      player.input.turn == 0 and player.input.accel == 0 -> player
-      true ->
-        dt = Enum.min([player.latency, System.system_time(:milliseconds) - player.last_input_update_time])
-        Logger.debug(dt)
-        Sector.State.update_player(player, dt, world_bounds)
-    end
+  def update_body(player, dt, world_bounds) do
+    body = player.body
+      |> Sector.State.rotate_body(dt, player.input.turn)
+      |> Sector.State.accelerate_body(dt, player.input.accel, player.acceleration)
+      |> Sector.State.update_body(dt)
+      |> Sector.State.wrap_body(world_bounds)
+
+    %{player | body: body}
   end
 end
