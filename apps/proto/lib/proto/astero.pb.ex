@@ -97,13 +97,15 @@ defmodule Astero.JoinAck do
   use Protobuf, syntax: :proto2
 
   @type t :: %__MODULE__{
-    id:   non_neg_integer,
-    body: Astero.Body.t
+    id:      non_neg_integer,
+    body:    Astero.Body.t,
+    latency: Astero.LatencyMeasure.t
   }
-  defstruct [:id, :body]
+  defstruct [:id, :body, :latency]
 
   field :id, 1, required: true, type: :uint32
   field :body, 2, required: true, type: Astero.Body
+  field :latency, 3, required: true, type: Astero.LatencyMeasure
 end
 
 defmodule Astero.OtherJoined do
@@ -238,7 +240,6 @@ defmodule Astero.Server do
   field :spawn, 5, optional: true, type: Astero.Spawn, oneof: 0
   field :sim_updates, 6, optional: true, type: Astero.SimUpdates, oneof: 0
   field :other_input, 7, optional: true, type: Astero.OtherInput, oneof: 0
-  field :latency, 8, optional: true, type: Astero.LatencyMeasure, oneof: 0
 end
 
 defmodule Astero.Entity do
