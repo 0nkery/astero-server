@@ -15,6 +15,7 @@ defmodule Sector.Player do
     :input,
     acceleration: {60.0, 10.0},
     latency: 0,
+    last_input_update_time: 0,
   ]
 
   def random(conn, nickname, {x_bound, y_bound}) do
@@ -38,7 +39,11 @@ defmodule Sector.Player do
     turn = if update.turn == nil, do: player.input.turn, else: update.turn
     accel = if update.accel == nil, do: player.input.accel, else: update.accel
 
-    %{player | input: %{player.input | turn: turn, accel: accel}}
+    %{
+      player |
+        input: %{player.input | turn: turn, accel: accel},
+        last_input_update_time: System.system_time(:milliseconds),
+    }
   end
 
   def update_latency(player, then) do
@@ -46,6 +51,15 @@ defmodule Sector.Player do
     latency = (now - then) / 2
 
     %{player | latency: latency}
+  end
+
+  def update_body(player, world_bounds) do
+    cond do
+      player.input.turn == 0 and player.input.accel == 0 -> player
+      true ->
+        dt = Enum.min([player.latency, System.system_time(:milliseconds) - player.last_input_update_time])
+        Sector.State.update_player(player, dt, world_bounds)
+    end
   end
 end
 
@@ -194,7 +208,9 @@ defmodule Sector do
     case msg do
       {:input, input} ->
         {_old, players} = Map.get_and_update(sector.players, player_id, fn player ->
-          updated = Player.update_input(player, input)
+          updated = player
+          |> Player.update_input(input)
+          |> Player.update_body(@world_bounds)
 
           Lobby.broadcast({:other_input, OtherInput.new(id: player_id, input: updated.input)}, player.conn)
 

@@ -22,9 +22,9 @@ defmodule Sector.State do
     end
 
     players = for {id, %Player{} = player} <- sector.players, into: %{} do
-      body = update_player(player, dt, bounds)
+      updated = update_player(player, dt, bounds)
 
-      {id, %{player | body: body}}
+      {id, updated}
     end
 
     frame = if frame == 30, do: 1, else: frame + 1
@@ -39,7 +39,7 @@ defmodule Sector.State do
       |> update_body(dt)
       |> wrap_body(x_bound, y_bound)
 
-    body
+    %{player | body: body}
   end
 
   def rotate_body(%Body{rvel: rvel, rot: rot} = body, dt, direction) do
