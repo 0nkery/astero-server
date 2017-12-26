@@ -156,7 +156,7 @@ defmodule Astero.LatencyMeasure do
   }
   defstruct [:timestamp]
 
-  field :timestamp, 1, required: true, type: :uint32
+  field :timestamp, 1, required: true, type: :uint64
 end
 
 defmodule Astero.Spawn do
