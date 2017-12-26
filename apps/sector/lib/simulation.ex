@@ -26,6 +26,9 @@ defmodule Sector.State do
     players = for {id, %Player{} = player} <- sector.players, into: %{} do
       body = player.body
         |> rotate_body(dt, player.input.turn)
+        |> accelerate_body(dt, player.input.accel, player.acceleration)
+        |> update_body(dt)
+        |> wrap_body(x_bound, y_bound)
 
       {id, %{player | body: body}}
     end
@@ -39,6 +42,24 @@ defmodule Sector.State do
     rot = rot + dt * rvel * direction
 
     %{body | rot: rot}
+  end
+
+  def accelerate_body(%Body{vel: vel} = body, dt, direction, {forward, backward}) do
+    v = if direction == 0 do
+      vel
+    else
+      {angle, accel_value} = cond do
+        direction > 0 -> {body.rot, forward}
+        direction < 0 -> {body.rot + :math.pi, backward}
+      end
+
+      {dx, dy} = Math.vector_from_angle(angle)
+      {ax, ay} = {dx * accel_value, dy * accel_value}
+
+      Coord.new(x: vel.x + ax * dt, y: vel.y + ay * dt)
+    end
+
+    %{body | vel: v}
   end
 
   def update_body(%Body{vel: v, pos: p} = body, dt) do

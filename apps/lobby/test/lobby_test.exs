@@ -16,7 +16,7 @@ defmodule LobbyTest.Helpers do
   end
 
   def recv_until(socket, check) do
-    {:ok, {_, _, packet}} = :gen_udp.recv(socket, 40, 500)
+    {:ok, {_, _, packet}} = :gen_udp.recv(socket, 1000, 500)
     %Server{msg: data} = Server.decode(packet)
     check_result = check.(data)
 
