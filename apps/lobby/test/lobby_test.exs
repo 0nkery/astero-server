@@ -192,6 +192,19 @@ defmodule LobbyTest do
         _ -> false
       end
     end)
+
+    accel_dir = 1
+    accel = {:input, Astero.Input.new(accel: accel_dir)}
+    Helpers.send_to_server(clients.second.socket, accel)
+
+    assert Helpers.recv_until(clients.first.socket, fn data ->
+      case data do
+        {:other_input, %Astero.OtherInput{id: ^second_id, input: input}} ->
+          assert input.accel == accel_dir
+          true
+        _ -> false
+      end
+    end)
   end
 
   test "broadcasting simulation data", clients do

@@ -28,14 +28,15 @@ defmodule Sector.Player do
         rvel: @player_rvel,
         rot: @player_initial_rot,
       ),
-      input: Astero.Input.new(turn: 0),
+      input: Astero.Input.new(turn: 0, accel: 0),
     }
   end
 
-  def update_input(player, %Astero.Input{turn: turn}) do
-    turn = if turn == nil, do: player.turn, else: turn
+  def update_input(player, %Astero.Input{} = update) do
+    turn = if update.turn == nil, do: player.input.turn, else: update.turn
+    accel = if update.accel == nil, do: player.input.accel, else: update.accel
 
-    %{player | input: %{player.input | turn: turn}}
+    %{player | input: %{player.input | turn: turn, accel: accel}}
   end
 end
 
