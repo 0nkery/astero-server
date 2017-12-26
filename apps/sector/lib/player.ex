@@ -15,6 +15,7 @@ defmodule Sector.Player do
     :input,
     acceleration: {60.0, 10.0},
     latency: 0,
+    last_input_update_time: 0,
   ]
 
   def random(conn, nickname, {x_bound, y_bound}) do
@@ -40,12 +41,14 @@ defmodule Sector.Player do
 
     player = %{player | input: %{player.input | turn: turn, accel: accel}}
 
-    cond do
-      turn == 0 or accel == 0 -> player
-      true ->
-        dt = player.latency / 1000.0
-        update_body(player, dt, world_bounds)
-    end
+    now = System.system_time(:milliseconds)
+
+    dt = Enum.min([player.latency, now - player.last_input_update_time]) / 1000.0
+    dt = if update.turn == 0 or update.accel == 0, do: -dt, else: dt
+
+    player = update_body(player, dt, world_bounds)
+
+    %{player | last_input_update_time: now}
   end
 
   def update_latency(player, then) do
