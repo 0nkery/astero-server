@@ -13,7 +13,8 @@ defmodule Sector.Player do
     :nickname,
     :body,
     :input,
-    acceleration: {60.0, 10.0}
+    acceleration: {60.0, 10.0},
+    latency: 0,
   ]
 
   def random(conn, nickname) do
@@ -38,6 +39,13 @@ defmodule Sector.Player do
     accel = if update.accel == nil, do: player.input.accel, else: update.accel
 
     %{player | input: %{player.input | turn: turn, accel: accel}}
+  end
+
+  def update_latency(player, then) do
+    now = DateTime.utc_now |> DateTime.to_unix
+    latency = (now - then) / 2
+
+    %{player | latency: latency}
   end
 end
 
@@ -188,6 +196,15 @@ defmodule Sector do
           updated = Player.update_input(player, input)
 
           Lobby.broadcast({:other_input, OtherInput.new(id: player_id, input: updated.input)}, player.conn)
+
+          {player, updated}
+        end)
+
+        %{sector | players: players}
+
+      {:latency, %LatencyMeasure{timestamp: timestamp}} ->
+        {_old, players} = Map.get_and_update(sector.players, player_id, fn player ->
+          updated = Player.update_latency(player, timestamp)
 
           {player, updated}
         end)
