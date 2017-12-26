@@ -54,6 +54,7 @@ defmodule Sector do
   alias Astero.SimUpdate
   alias Astero.Entity
   alias Astero.OtherInput
+  alias Astero.LatencyMeasure
 
   alias Sector.State
   alias Sector.Player
@@ -97,7 +98,7 @@ defmodule Sector do
     case msg do
       {:joined, conn, player_id, nickname} ->
         player = Player.random(conn, nickname)
-        Lobby.Connection.send(conn, {:join_ack, JoinAck.new(body: player.body, id: player_id)})
+        send_ack(conn, player_id, player)
 
         joined = OtherJoined.new(id: player_id, nickname: nickname, body: player.body)
         Lobby.broadcast({:other_joined, joined}, conn)
@@ -193,5 +194,12 @@ defmodule Sector do
 
         %{sector | players: players}
     end
+  end
+
+  defp send_ack(conn, player_id, player) do
+    latency_measure = LatencyMeasure.new(timestamp: DateTime.utc_now |> DateTime.to_unix)
+    join_ack = JoinAck.new(body: player.body, id: player_id, latency: latency_measure)
+
+    Lobby.Connection.send(conn, {:join_ack, join_ack})
   end
 end
