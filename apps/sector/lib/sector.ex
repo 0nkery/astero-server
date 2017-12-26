@@ -42,7 +42,7 @@ defmodule Sector.Player do
   end
 
   def update_latency(player, then) do
-    now = DateTime.utc_now |> DateTime.to_unix
+    now = System.system_time(:milliseconds)
     latency = (now - then) / 2
 
     %{player | latency: latency}
@@ -214,7 +214,7 @@ defmodule Sector do
   end
 
   defp send_ack(conn, player_id, player) do
-    latency_measure = LatencyMeasure.new(timestamp: DateTime.utc_now |> DateTime.to_unix)
+    latency_measure = LatencyMeasure.new(timestamp: System.system_time(:milliseconds))
     join_ack = JoinAck.new(body: player.body, id: player_id, latency: latency_measure)
 
     Lobby.Connection.send(conn, {:join_ack, join_ack})

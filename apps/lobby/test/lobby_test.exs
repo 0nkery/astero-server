@@ -232,4 +232,20 @@ defmodule LobbyTest do
       end
     end)
   end
+
+  test "sending latency measures", clients do
+    join = {:join, Astero.Join.new(nickname: clients.first.nickname)}
+    Helpers.send_to_server(clients.first.socket, join)
+
+    assert Helpers.recv_until(clients.first.socket, fn data ->
+      case data do
+        {:join_ack, %Astero.JoinAck{latency: latency}} ->
+          Helpers.send_to_server(clients.first.socket, {:latency, latency})
+
+          true
+
+        _ -> false
+      end
+    end)
+  end
 end
