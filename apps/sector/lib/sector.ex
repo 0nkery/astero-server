@@ -13,7 +13,7 @@ defmodule Sector.Player do
     :nickname,
     :body,
     :input,
-    acceleration: {100.0, 10.0}
+    acceleration: {60.0, 10.0}
   ]
 
   def random(conn, nickname) do
