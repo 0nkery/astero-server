@@ -16,7 +16,7 @@ defmodule LobbyTest.Helpers do
   end
 
   def recv_until(socket, check) do
-    {:ok, {_, _, packet}} = :gen_udp.recv(socket, 1000, 500)
+    {:ok, {_, _, packet}} = :gen_udp.recv(socket, 1000, 5000)
     %Server{msg: data} = Server.decode(packet)
     check_result = check.(data)
 
@@ -175,6 +175,9 @@ defmodule LobbyTest do
         _ -> false
       end
     end)
+
+    Helpers.disconnect(clients.first)
+    Helpers.disconnect(clients.second)
   end
 
   test "broadcasting input events", clients do
@@ -205,6 +208,9 @@ defmodule LobbyTest do
         _ -> false
       end
     end)
+
+    Helpers.disconnect(clients.first)
+    Helpers.disconnect(clients.second)
   end
 
   test "broadcasting simulation data", clients do
@@ -231,6 +237,9 @@ defmodule LobbyTest do
         _ -> false
       end
     end)
+
+    Helpers.disconnect(clients.first)
+    Helpers.disconnect(clients.second)
   end
 
   test "sending latency measures", clients do
@@ -247,5 +256,7 @@ defmodule LobbyTest do
         _ -> false
       end
     end)
+
+    Helpers.disconnect(clients.first)
   end
 end
