@@ -12,9 +12,7 @@ defmodule Sector.State do
   @max_velocity 250.0
   @max_velocity_sq @max_velocity * @max_velocity
 
-  def update(%Sector.State{frame: frame} = sector, dt, {width, height}) do
-    {x_bound, y_bound} = {width / 2.0, height / 2.0}
-
+  def update(%Sector.State{frame: frame} = sector, dt, {x_bound, y_bound} = bounds) do
     asteroids = for {id, %Asteroid{} = asteroid} <- sector.asteroids, into: %{} do
       body = asteroid.body
         |> update_body(dt)
@@ -24,11 +22,7 @@ defmodule Sector.State do
     end
 
     players = for {id, %Player{} = player} <- sector.players, into: %{} do
-      body = player.body
-        |> rotate_body(dt, player.input.turn)
-        |> accelerate_body(dt, player.input.accel, player.acceleration)
-        |> update_body(dt)
-        |> wrap_body(x_bound, y_bound)
+      body = update_player(player, dt, bounds)
 
       {id, %{player | body: body}}
     end
@@ -36,6 +30,16 @@ defmodule Sector.State do
     frame = if frame == 30, do: 1, else: frame + 1
 
     %{sector | asteroids: asteroids, players: players, frame: frame}
+  end
+
+  def update_player(player, dt, {x_bound, y_bound}) do
+    body = player.body
+      |> rotate_body(dt, player.input.turn)
+      |> accelerate_body(dt, player.input.accel, player.acceleration)
+      |> update_body(dt)
+      |> wrap_body(x_bound, y_bound)
+
+    body
   end
 
   def rotate_body(%Body{rvel: rvel, rot: rot} = body, dt, direction) do

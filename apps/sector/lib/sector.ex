@@ -17,8 +17,8 @@ defmodule Sector.Player do
     latency: 0,
   ]
 
-  def random(conn, nickname) do
-    coord = Astero.Coord.Impl.random(400, 300)
+  def random(conn, nickname, {x_bound, y_bound}) do
+    coord = Astero.Coord.Impl.random(x_bound, y_bound)
 
     %Sector.Player {
       conn: conn,
@@ -71,6 +71,7 @@ defmodule Sector do
   @max_asteroids_count 10
   @asteroid_spawn_rate 5000
   @simulation_update_rate 33
+  @world_bounds {400, 300}
 
   # Client
   def start_link(opts \\ []) do
@@ -105,7 +106,7 @@ defmodule Sector do
   def handle_cast(msg, sector) do
     case msg do
       {:joined, conn, player_id, nickname} ->
-        player = Player.random(conn, nickname)
+        player = Player.random(conn, nickname, @world_bounds)
         send_ack(conn, player_id, player)
 
         joined = OtherJoined.new(id: player_id, nickname: nickname, body: player.body)
@@ -160,7 +161,7 @@ defmodule Sector do
         {:noreply, sector}
 
       :update_sim ->
-        sector = State.update(sector, @simulation_update_rate / 1000.0, {800.0, 600.0})
+        sector = State.update(sector, @simulation_update_rate / 1000.0, @world_bounds)
 
         Process.send_after(self(), :update_sim, @simulation_update_rate)
 
