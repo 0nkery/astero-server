@@ -67,6 +67,43 @@ defmodule Astero.Asteroids.EntitiesEntry do
   field :value, 2, optional: true, type: Astero.Asteroid
 end
 
+defmodule Astero.Shot do
+  use Protobuf, syntax: :proto2
+
+  @type t :: %__MODULE__{
+    body: Astero.Body.t,
+    ttl:  float
+  }
+  defstruct [:body, :ttl]
+
+  field :body, 1, required: true, type: Astero.Body
+  field :ttl, 2, required: true, type: :float
+end
+
+defmodule Astero.Shots do
+  use Protobuf, syntax: :proto2
+
+  @type t :: %__MODULE__{
+    entities: %{non_neg_integer => Astero.Shot.t}
+  }
+  defstruct [:entities]
+
+  field :entities, 1, repeated: true, type: Astero.Shots.EntitiesEntry, map: true
+end
+
+defmodule Astero.Shots.EntitiesEntry do
+  use Protobuf, map: true, syntax: :proto2
+
+  @type t :: %__MODULE__{
+    key:   non_neg_integer,
+    value: Astero.Shot.t
+  }
+  defstruct [:key, :value]
+
+  field :key, 1, optional: true, type: :uint32
+  field :value, 2, optional: true, type: Astero.Shot
+end
+
 defmodule Astero.SimUpdate do
   use Protobuf, syntax: :proto2
 
@@ -169,6 +206,7 @@ defmodule Astero.Spawn do
 
   oneof :entity, 0
   field :asteroids, 1, optional: true, type: Astero.Asteroids, oneof: 0
+  field :shots, 2, optional: true, type: Astero.Shots, oneof: 0
 end
 
 defmodule Astero.SimUpdates do
@@ -187,12 +225,14 @@ defmodule Astero.Input do
 
   @type t :: %__MODULE__{
     turn:  integer,
-    accel: integer
+    accel: integer,
+    fire:  boolean
   }
-  defstruct [:turn, :accel]
+  defstruct [:turn, :accel, :fire]
 
   field :turn, 1, optional: true, type: :sint32
   field :accel, 2, optional: true, type: :sint32
+  field :fire, 3, optional: true, type: :bool
 end
 
 defmodule Astero.OtherInput do
