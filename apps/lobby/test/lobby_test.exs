@@ -209,6 +209,20 @@ defmodule LobbyTest do
       end
     end)
 
+    fire = {:input, Astero.Input.new(fire: true)}
+    Helpers.send_to_server(clients.second.socket, fire)
+
+    assert Helpers.recv_until(clients.first.socket, fn data ->
+      case data do
+        {:spawn, %Astero.Spawn{entity: {:shots, shots}}} ->
+          assert Enum.count(shots.entities) == 1
+
+          true
+
+        _ -> false
+      end
+    end)
+
     Helpers.disconnect(clients.first)
     Helpers.disconnect(clients.second)
   end

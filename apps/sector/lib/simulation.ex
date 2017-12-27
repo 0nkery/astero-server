@@ -1,6 +1,8 @@
+require Logger
+
 defmodule Sector.State do
 
-  defstruct players: %{}, asteroids: %{}, frame: 1
+  defstruct players: %{}, asteroids: %{}, shots: %{}, new_shots: []
 
   alias Astero.Coord
   alias Astero.Asteroid
@@ -12,7 +14,7 @@ defmodule Sector.State do
   @max_velocity 250.0
   @max_velocity_sq @max_velocity * @max_velocity
 
-  def update(%Sector.State{frame: frame} = sector, dt, bounds) do
+  def update(%Sector.State{} = sector, dt, bounds) do
     asteroids = for {id, %Asteroid{} = asteroid} <- sector.asteroids, into: %{} do
       body = asteroid.body
         |> update_body(dt)
@@ -22,14 +24,18 @@ defmodule Sector.State do
     end
 
     players = for {id, %Player{} = player} <- sector.players, into: %{} do
-      updated = Player.update_body(player, dt, bounds)
+      updated = player
+        |> Player.update_body(dt, bounds)
+        |> Player.fire(dt)
 
       {id, updated}
     end
 
-    frame = if frame == 30, do: 1, else: frame + 1
+    new_shots = sector.players
+      |> Enum.map(fn {_id, player} -> player.new_shot end)
+      |> Enum.filter(fn shot -> shot != nil end)
 
-    %{sector | asteroids: asteroids, players: players, frame: frame}
+    %{sector | asteroids: asteroids, players: players, new_shots: new_shots}
   end
 
   def rotate_body(%Body{rvel: rvel, rot: rot} = body, dt, direction) do

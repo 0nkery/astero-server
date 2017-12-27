@@ -14,6 +14,7 @@ defmodule Sector do
   alias Astero.Entity
   alias Astero.OtherInput
   alias Astero.LatencyMeasure
+  alias Astero.Shots
 
   alias Sector.State
   alias Sector.Player
@@ -117,45 +118,61 @@ defmodule Sector do
 
         Process.send_after(self(), :update_sim, @simulation_update_rate)
 
-        asteroid_updates = Enum.map(sector.asteroids, fn {id, asteroid} ->
-          SimUpdate.new(
-            entity: Entity.value(:ASTEROID),
-            id: id,
-            body: %{asteroid.body | size: nil},
-          )
-        end)
-
-        Enum.each(sector.players, fn {_id, player} ->
-          updates = Enum.map(asteroid_updates, fn update ->
-            body = State.update_body(update.body, player.latency / 1000.0)
-
-            %{update | body: body}
+        Task.start(fn ->
+          asteroid_updates = Enum.map(sector.asteroids, fn {id, asteroid} ->
+            SimUpdate.new(
+              entity: Entity.value(:ASTEROID),
+              id: id,
+              body: %{asteroid.body | size: nil},
+            )
           end)
-          Lobby.Connection.send(player.conn, {:sim_updates, SimUpdates.new(updates: updates)})
-        end)
 
-#        Lobby.broadcast({:sim_updates, SimUpdates.new(updates: asteroid_updates)})
+          Enum.each(sector.players, fn {_id, player} ->
+            updates = Enum.map(asteroid_updates, fn update ->
+              body = State.update_body(update.body, player.latency / 1000.0)
 
-        player_updates = Enum.map(sector.players, fn {id, player} ->
-          SimUpdate.new(
-            entity: Entity.value(:PLAYER),
-            id: id,
-            body: %{player.body | size: nil, rvel: nil}
-          )
-        end)
-
-        Enum.each(sector.players, fn {_id, player} ->
-          updates = Enum.map(player_updates, fn update ->
-            body = State.update_body(update.body, player.latency / 1000.0)
-
-            %{update | body: body}
+              %{update | body: body}
+            end)
+            Lobby.Connection.send(player.conn, {:sim_updates, SimUpdates.new(updates: updates)})
           end)
-          Lobby.Connection.send(player.conn, {:sim_updates, SimUpdates.new(updates: updates)})
         end)
 
-#        Lobby.broadcast({:sim_updates, SimUpdates.new(updates: player_updates)})
+        Task.start(fn ->
+          player_updates = Enum.map(sector.players, fn {id, player} ->
+            SimUpdate.new(
+              entity: Entity.value(:PLAYER),
+              id: id,
+              body: %{player.body | size: nil, rvel: nil}
+            )
+          end)
 
-        {:noreply, sector}
+          Enum.each(sector.players, fn {_id, player} ->
+            updates = Enum.map(player_updates, fn update ->
+              body = State.update_body(update.body, player.latency / 1000.0)
+
+              %{update | body: body}
+            end)
+            Lobby.Connection.send(player.conn, {:sim_updates, SimUpdates.new(updates: updates)})
+          end)
+        end)
+
+        cur_shot_count = Enum.count(sector.shots)
+        new_shots = Enum.count(sector.new_shots)
+
+        shots = if new_shots > 0 do
+          new_shot_count = cur_shot_count + Enum.count(sector.new_shots)
+
+          new_shots = Map.new(Enum.zip(cur_shot_count..new_shot_count, sector.new_shots))
+
+          spawn_shots = Spawn.new(entity: {:shots, Shots.new(entities: new_shots)})
+          Lobby.broadcast({:spawn, spawn_shots})
+
+          Map.merge(sector.shots, new_shots)
+        else
+          sector.shots
+        end
+
+        {:noreply, %{sector | shots: shots, new_shots: []}}
 
       :update_latencies ->
         latency = LatencyMeasure.new(timestamp: System.system_time(:milliseconds))
