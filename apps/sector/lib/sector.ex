@@ -116,26 +116,24 @@ defmodule Sector do
 
         Process.send_after(self(), :update_sim, @simulation_update_rate)
 
-        if sector.frame == 30 do
-          asteroid_updates = Enum.map(sector.asteroids, fn {id, asteroid} ->
-            SimUpdate.new(
-              entity: Entity.value(:ASTEROID),
-              id: id,
-              body: %{asteroid.body | size: nil},
-            )
-          end)
+        asteroid_updates = Enum.map(sector.asteroids, fn {id, asteroid} ->
+          SimUpdate.new(
+            entity: Entity.value(:ASTEROID),
+            id: id,
+            body: %{asteroid.body | size: nil},
+          )
+        end)
 
-          Lobby.broadcast({:sim_updates, SimUpdates.new(updates: asteroid_updates)})
+        Lobby.broadcast({:sim_updates, SimUpdates.new(updates: asteroid_updates)})
 
-          player_updates = Enum.map(sector.players, fn {id, player} ->
-            SimUpdate.new(
-              entity: Entity.value(:PLAYER),
-              id: id,
-              body: %{player.body | size: nil, rvel: nil}
-            )
-          end)
-          Lobby.broadcast({:sim_updates, SimUpdates.new(updates: player_updates)})
-        end
+        player_updates = Enum.map(sector.players, fn {id, player} ->
+          SimUpdate.new(
+            entity: Entity.value(:PLAYER),
+            id: id,
+            body: %{player.body | size: nil, rvel: nil}
+          )
+        end)
+        Lobby.broadcast({:sim_updates, SimUpdates.new(updates: player_updates)})
 
         {:noreply, sector}
     end
