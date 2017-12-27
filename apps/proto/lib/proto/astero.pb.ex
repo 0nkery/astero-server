@@ -119,31 +119,31 @@ defmodule Astero.SimUpdate do
   field :body, 3, required: true, type: Astero.Body
 end
 
-defmodule Astero.AsteroidPlayerCollision do
+defmodule Astero.EntityLifeUpdate do
   use Protobuf, syntax: :proto2
 
   @type t :: %__MODULE__{
-    asteroid_id: non_neg_integer,
-    player_id:   non_neg_integer,
-    player_life: float
+    entity: integer,
+    id:     non_neg_integer,
+    life:   float
   }
-  defstruct [:asteroid_id, :player_id, :player_life]
+  defstruct [:entity, :id, :life]
 
-  field :asteroid_id, 1, required: true, type: :uint32
-  field :player_id, 2, required: true, type: :uint32
-  field :player_life, 3, required: true, type: :float
+  field :entity, 1, required: true, type: Astero.Entity, enum: true
+  field :id, 2, required: true, type: :uint32
+  field :life, 3, required: true, type: :float
 end
 
 defmodule Astero.GameplayEvent do
   use Protobuf, syntax: :proto2
 
   @type t :: %__MODULE__{
-    event:        {atom, any}
+    event:       {atom, any}
   }
   defstruct [:event]
 
   oneof :event, 0
-  field :ap_collision, 1, optional: true, type: Astero.AsteroidPlayerCollision, oneof: 0
+  field :life_update, 1, optional: true, type: Astero.EntityLifeUpdate, oneof: 0
 end
 
 defmodule Astero.GameplayEvents do
