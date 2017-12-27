@@ -50,6 +50,7 @@ defmodule Sector do
 
     Process.send_after(self(), :spawn, @asteroid_spawn_rate)
     Process.send_after(self(), :update_sim, @simulation_update_rate)
+    Process.send_after(self(), :update_latencies, 10000)
 
     {:ok, %State{asteroids: asteroids}}
   end
@@ -124,7 +125,16 @@ defmodule Sector do
           )
         end)
 
-        Lobby.broadcast({:sim_updates, SimUpdates.new(updates: asteroid_updates)})
+        Enum.each(sector.players, fn {_id, player} ->
+          updates = Enum.map(asteroid_updates, fn update ->
+            body = State.update_body(update.body, player.latency / 1000.0)
+
+            %{update | body: body}
+          end)
+          Lobby.Connection.send(player.conn, {:sim_updates, SimUpdates.new(updates: updates)})
+        end)
+
+#        Lobby.broadcast({:sim_updates, SimUpdates.new(updates: asteroid_updates)})
 
         player_updates = Enum.map(sector.players, fn {id, player} ->
           SimUpdate.new(
@@ -133,7 +143,17 @@ defmodule Sector do
             body: %{player.body | size: nil, rvel: nil}
           )
         end)
-        Lobby.broadcast({:sim_updates, SimUpdates.new(updates: player_updates)})
+
+        Enum.each(sector.players, fn {_id, player} ->
+          updates = Enum.map(player_updates, fn update ->
+            body = State.update_body(update.body, player.latency / 1000.0)
+
+            %{update | body: body}
+          end)
+          Lobby.Connection.send(player.conn, {:sim_updates, SimUpdates.new(updates: updates)})
+        end)
+
+#        Lobby.broadcast({:sim_updates, SimUpdates.new(updates: player_updates)})
 
         {:noreply, sector}
     end
