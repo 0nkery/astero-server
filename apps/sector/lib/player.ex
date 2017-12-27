@@ -53,9 +53,15 @@ defmodule Sector.Player do
 
   def update_latency(player, then) do
     now = System.system_time(:milliseconds)
-    latency = (now - then) / 2
+    measured_latency = (now - then) / 2
 
-    %{player | latency: latency}
+    avg_latency = if player.latency == 0.0 do
+      measured_latency
+    else
+      0.28 * measured_latency + (1 - 0.28) * player.latency
+    end
+
+    %{player | latency: avg_latency}
   end
 
   def update_body(player, dt, world_bounds) do

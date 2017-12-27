@@ -156,6 +156,13 @@ defmodule Sector do
 #        Lobby.broadcast({:sim_updates, SimUpdates.new(updates: player_updates)})
 
         {:noreply, sector}
+
+      :update_latencies ->
+        latency = LatencyMeasure.new(timestamp: System.system_time(:milliseconds))
+        Lobby.broadcast({:latency, latency})
+        Process.send_after(self(), :update_latencies, 10000)
+
+        {:noreply, sector}
     end
   end
 
