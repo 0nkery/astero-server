@@ -119,6 +119,44 @@ defmodule Astero.SimUpdate do
   field :body, 3, required: true, type: Astero.Body
 end
 
+defmodule Astero.AsteroidPlayerCollision do
+  use Protobuf, syntax: :proto2
+
+  @type t :: %__MODULE__{
+    asteroid_id: non_neg_integer,
+    player_id:   non_neg_integer,
+    player_life: float
+  }
+  defstruct [:asteroid_id, :player_id, :player_life]
+
+  field :asteroid_id, 1, required: true, type: :uint32
+  field :player_id, 2, required: true, type: :uint32
+  field :player_life, 3, required: true, type: :float
+end
+
+defmodule Astero.GameplayEvent do
+  use Protobuf, syntax: :proto2
+
+  @type t :: %__MODULE__{
+    event:        {atom, any}
+  }
+  defstruct [:event]
+
+  oneof :event, 0
+  field :ap_collision, 1, optional: true, type: Astero.AsteroidPlayerCollision, oneof: 0
+end
+
+defmodule Astero.GameplayEvents do
+  use Protobuf, syntax: :proto2
+
+  @type t :: %__MODULE__{
+    events: [Astero.GameplayEvent.t]
+  }
+  defstruct [:events]
+
+  field :events, 1, repeated: true, type: Astero.GameplayEvent
+end
+
 defmodule Astero.Join do
   use Protobuf, syntax: :proto2
 
@@ -268,7 +306,7 @@ defmodule Astero.Server do
   use Protobuf, syntax: :proto2
 
   @type t :: %__MODULE__{
-    msg:          {atom, any}
+    msg:             {atom, any}
   }
   defstruct [:msg]
 
@@ -281,6 +319,7 @@ defmodule Astero.Server do
   field :sim_updates, 6, optional: true, type: Astero.SimUpdates, oneof: 0
   field :other_input, 7, optional: true, type: Astero.OtherInput, oneof: 0
   field :latency, 8, optional: true, type: Astero.LatencyMeasure, oneof: 0
+  field :gameplay_events, 9, optional: true, type: Astero.GameplayEvents, oneof: 0
 end
 
 defmodule Astero.Entity do
