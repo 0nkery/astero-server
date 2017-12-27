@@ -240,6 +240,7 @@ defmodule Astero.Server do
   field :spawn, 5, optional: true, type: Astero.Spawn, oneof: 0
   field :sim_updates, 6, optional: true, type: Astero.SimUpdates, oneof: 0
   field :other_input, 7, optional: true, type: Astero.OtherInput, oneof: 0
+  field :latency, 8, optional: true, type: Astero.LatencyMeasure, oneof: 0
 end
 
 defmodule Astero.Entity do
