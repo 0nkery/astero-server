@@ -15,6 +15,7 @@ defmodule Sector do
   alias Astero.OtherInput
   alias Astero.LatencyMeasure
   alias Astero.Shots
+  alias Astero.GameplayEvents
 
   alias Sector.State
   alias Sector.Player
@@ -135,6 +136,8 @@ defmodule Sector do
         else
           sector.shots
         end
+
+        Lobby.broadcast({:gameplay_events, GameplayEvents.new(events: events)})
 
         {:noreply, %{sector | shots: shots}}
 

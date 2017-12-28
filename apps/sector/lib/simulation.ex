@@ -7,6 +7,9 @@ defmodule Sector.State do
   alias Astero.Coord
   alias Astero.Asteroid
   alias Astero.Body
+  alias Astero.GameplayEvent
+  alias Astero.EntityLifeUpdate
+  alias Astero.Entity
 
   alias Sector.Player
   alias Sector.Util.Math
@@ -35,7 +38,29 @@ defmodule Sector.State do
       |> Enum.map(fn {_id, player} -> player.new_shot end)
       |> Enum.filter(fn shot -> shot != nil end)
 
-    %{sector | asteroids: asteroids, players: players, new_shots: new_shots}
+    asteroid_player_collisions = Enum.flat_map(sector.players, fn {id, player} ->
+      Enum.map(sector.asteroids, fn {a_id, asteroid} ->
+        if collided?(asteroid.body, player.body) do
+          destroy_asteroid = EntityLifeUpdate.new(entity: Entity.value(:ASTEROID), id: a_id, life: 0.0)
+          damage_player = EntityLifeUpdate.new(entity: Entity.value(:PLAYER), id: id, life: player.life - 1.0)
+
+          [
+            GameplayEvent.new(event: {:life_update, destroy_asteroid}),
+            GameplayEvent.new(event: {:life_update, damage_player}),
+          ]
+        else
+          []
+        end
+      end)
+    end)
+
+    events = asteroid_player_collisions
+
+    {
+      %{sector | asteroids: asteroids, players: players},
+      new_shots,
+      events,
+    }
   end
 
   def rotate_body(%Body{rvel: rvel, rot: rot} = body, dt, direction) do
@@ -98,5 +123,13 @@ defmodule Sector.State do
     end
 
     %{body | vel: v}
+  end
+
+  def collided?(first, second) do
+    x_diff = second.pos.x - first.pos.x
+    y_diff = second.pos.y - first.pos.y
+    distance = :math.sqrt(x_diff * x_diff + y_diff * y_diff)
+
+    distance < (first.size / 2.0 + second.size / 2.0)
   end
 end
