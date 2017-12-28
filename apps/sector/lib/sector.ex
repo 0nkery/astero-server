@@ -137,7 +137,9 @@ defmodule Sector do
           sector.shots
         end
 
-        Lobby.broadcast({:gameplay_events, GameplayEvents.new(events: events)})
+        if Enum.count(events) do
+          Lobby.broadcast({:gameplay_events, GameplayEvents.new(events: events)})
+        end
 
         {:noreply, %{sector | shots: shots}}
 
