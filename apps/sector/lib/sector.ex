@@ -114,7 +114,7 @@ defmodule Sector do
         {:noreply, sector}
 
       :update_sim ->
-        sector = State.update(sector, @simulation_update_rate / 1000.0, @world_bounds)
+        {sector, new_shots, events} = State.update(sector, @simulation_update_rate / 1000.0, @world_bounds)
 
         Process.send_after(self(), :update_sim, @simulation_update_rate)
 
@@ -157,12 +157,12 @@ defmodule Sector do
         end)
 
         cur_shot_count = Enum.count(sector.shots)
-        new_shots = Enum.count(sector.new_shots)
+        new_shots_count = Enum.count(new_shots)
 
-        shots = if new_shots > 0 do
-          new_shot_count = cur_shot_count + Enum.count(sector.new_shots)
+        shots = if new_shots_count > 0 do
+          shot_count = cur_shot_count + new_shots_count
 
-          new_shots = Map.new(Enum.zip(cur_shot_count..new_shot_count, sector.new_shots))
+          new_shots = Map.new(Enum.zip(cur_shot_count..shot_count, new_shots))
 
           spawn_shots = Spawn.new(entity: {:shots, Shots.new(entities: new_shots)})
           Lobby.broadcast({:spawn, spawn_shots})
@@ -172,7 +172,7 @@ defmodule Sector do
           sector.shots
         end
 
-        {:noreply, %{sector | shots: shots, new_shots: []}}
+        {:noreply, %{sector | shots: shots}}
 
       :update_latencies ->
         latency = LatencyMeasure.new(timestamp: System.system_time(:milliseconds))
