@@ -38,28 +38,9 @@ defmodule Sector.State do
       |> Enum.map(fn {_id, player} -> player.new_shot end)
       |> Enum.filter(fn shot -> shot != nil end)
 
-    asteroid_player_collisions = Enum.flat_map(sector.players, fn {id, player} ->
-      Enum.flat_map(sector.asteroids, fn {a_id, asteroid} ->
-        if collided?(asteroid.body, player.body) do
-          destroy_asteroid = EntityLifeUpdate.new(entity: Entity.value(:ASTEROID), id: a_id, life: 0.0)
-          damage_player = EntityLifeUpdate.new(entity: Entity.value(:PLAYER), id: id, life: player.life - 1.0)
-
-          [
-            GameplayEvent.new(event: {:life_update, destroy_asteroid}),
-            GameplayEvent.new(event: {:life_update, damage_player}),
-          ]
-        else
-          []
-        end
-      end)
-    end)
-
-    events = asteroid_player_collisions
-
     {
       %{sector | asteroids: asteroids, players: players},
       new_shots,
-      events,
     }
   end
 

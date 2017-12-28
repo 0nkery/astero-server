@@ -15,7 +15,6 @@ defmodule Sector do
   alias Astero.OtherInput
   alias Astero.LatencyMeasure
   alias Astero.Shots
-  alias Astero.GameplayEvents
 
   alias Sector.State
   alias Sector.Player
@@ -115,7 +114,7 @@ defmodule Sector do
         {:noreply, sector}
 
       :update_sim ->
-        {sector, new_shots, events} = State.update(sector, @simulation_update_rate / 1000.0, @world_bounds)
+        {sector, new_shots} = State.update(sector, @simulation_update_rate / 1000.0, @world_bounds)
 
         Process.send_after(self(), :update_sim, @simulation_update_rate)
 
@@ -135,10 +134,6 @@ defmodule Sector do
           Map.merge(sector.shots, new_shots)
         else
           sector.shots
-        end
-
-        if Enum.count(events) do
-          Lobby.broadcast({:gameplay_events, GameplayEvents.new(events: events)})
         end
 
         {:noreply, %{sector | shots: shots}}
@@ -178,10 +173,11 @@ defmodule Sector do
   end
 
   defp send_ack(conn, player_id, player) do
-    latency_measure = LatencyMeasure.new(timestamp: System.system_time(:milliseconds))
-    join_ack = JoinAck.new(body: player.body, id: player_id, latency: latency_measure)
-
+    join_ack = JoinAck.new(body: player.body, id: player_id)
     Lobby.Connection.send(conn, {:join_ack, join_ack})
+
+    latency_measure = LatencyMeasure.new(timestamp: System.system_time(:milliseconds))
+    Lobby.Connection.send(conn, {:latency, latency_measure})
   end
 
   defp send_sim_updates(sector) do

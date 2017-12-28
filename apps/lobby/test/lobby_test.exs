@@ -262,7 +262,7 @@ defmodule LobbyTest do
 
     assert Helpers.recv_until(clients.first.socket, fn data ->
       case data do
-        {:join_ack, %Astero.JoinAck{latency: latency}} ->
+        {:latency, %Astero.LatencyMeasure{} = latency} ->
           Helpers.send_to_server(clients.first.socket, {:latency, latency})
 
           true

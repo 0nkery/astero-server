@@ -146,17 +146,6 @@ defmodule Astero.GameplayEvent do
   field :life_update, 1, optional: true, type: Astero.EntityLifeUpdate, oneof: 0
 end
 
-defmodule Astero.GameplayEvents do
-  use Protobuf, syntax: :proto2
-
-  @type t :: %__MODULE__{
-    events: [Astero.GameplayEvent.t]
-  }
-  defstruct [:events]
-
-  field :events, 1, repeated: true, type: Astero.GameplayEvent
-end
-
 defmodule Astero.Join do
   use Protobuf, syntax: :proto2
 
@@ -172,15 +161,13 @@ defmodule Astero.JoinAck do
   use Protobuf, syntax: :proto2
 
   @type t :: %__MODULE__{
-    id:      non_neg_integer,
-    body:    Astero.Body.t,
-    latency: Astero.LatencyMeasure.t
+    id:   non_neg_integer,
+    body: Astero.Body.t
   }
-  defstruct [:id, :body, :latency]
+  defstruct [:id, :body]
 
   field :id, 1, required: true, type: :uint32
   field :body, 2, required: true, type: Astero.Body
-  field :latency, 3, required: true, type: Astero.LatencyMeasure
 end
 
 defmodule Astero.OtherJoined do
@@ -284,6 +271,17 @@ defmodule Astero.OtherInput do
 
   field :id, 1, required: true, type: :uint32
   field :input, 2, required: true, type: Astero.Input
+end
+
+defmodule Astero.GameplayEvents do
+  use Protobuf, syntax: :proto2
+
+  @type t :: %__MODULE__{
+    events: [Astero.GameplayEvent.t]
+  }
+  defstruct [:events]
+
+  field :events, 1, repeated: true, type: Astero.GameplayEvent
 end
 
 defmodule Astero.Client do
