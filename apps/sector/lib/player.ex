@@ -49,7 +49,6 @@ defmodule Sector.Player do
     fire = if update.fire == nil, do: player.input.fire, else: update.fire
 
     player = %{player | input: %{player.input | turn: turn, accel: accel, fire: fire}}
-
     if update.fire == nil do
       now = System.system_time(:milliseconds)
 
@@ -95,7 +94,7 @@ defmodule Sector.Player do
       player.shot_timeout <= 0.0 and player.input.fire ->
         {dx, dy} = Math.vector_from_angle(player.body.rot)
         vel = Astero.Coord.new(x: dx * @shot_speed, y: dy * @shot_speed)
-        body = Astero.Body.new(pos: player.body.pos, vel: vel, rot: player.body.rot, size: @shot_size)
+        body = Astero.Body.new(pos: player.body.pos, vel: vel, size: @shot_size)
         new_shot = Astero.Shot.new(body: body, ttl: @shot_ttl)
 
         %{player | shot_timeout: @player_shot_timeout, new_shot: new_shot}
