@@ -17,7 +17,13 @@ defmodule LobbyTest.Helpers do
 
   def recv_until(socket, check) do
     {:ok, {_, _, packet}} = :gen_udp.recv(socket, 1000, 5000)
-    %Mmob.Server{msg: data} = Mmob.Server.decode(packet)
+    %Mmob.Server{msg: server_msg} = Mmob.Server.decode(packet)
+
+    data = case server_msg do
+      {:proxied, %Mmob.Proxied{msg: msg}} ->
+        Astero.Server.decode(msg).msg
+      msg -> msg
+    end
     check_result = check.(data)
 
     case check_result do
@@ -93,7 +99,7 @@ defmodule LobbyTest do
 
     assert Helpers.recv_until(clients.first.socket, fn data ->
       case data do
-        {:other_joined, %Astero.Create{entity: %Astero.Player{id: ^second_id, nickname: broadcasted_nickname}}} ->
+        {:create, %Astero.Create{entity: {:player, %Astero.Player{id: ^second_id, nickname: broadcasted_nickname}}}} ->
           assert broadcasted_nickname == clients.second.nickname
           true
 
@@ -103,7 +109,7 @@ defmodule LobbyTest do
 
     assert Helpers.recv_until(clients.second.socket, fn data ->
       case data do
-        {:other_joined, %Astero.Create{entity: %Astero.Player{id: ^first_id, nickname: broadcasted_nickname}}} ->
+        {:create, %Astero.Create{entity: {:player, %Astero.Player{id: ^first_id, nickname: broadcasted_nickname}}}} ->
             assert broadcasted_nickname == clients.first.nickname
             true
 
@@ -143,7 +149,7 @@ defmodule LobbyTest do
     assert Helpers.recv_until(clients.first.socket, fn data ->
       player_kind = Astero.Entity.value(:PLAYER)
       case data do
-        {:other_left, %Astero.Destroy{id: ^second_id, entity: ^player_kind}} -> true
+        {:destroy, %Astero.Destroy{id: ^second_id, entity: ^player_kind}} -> true
         _ -> false
       end
     end)
@@ -163,7 +169,8 @@ defmodule LobbyTest do
           Helpers.send_to_server(clients.first.socket, heartbeat)
           false
 
-        {:other_left, %Astero.Destroy{id: ^second_id, entity: ^player_kind}} -> true
+        {:destroy, %Astero.Destroy{id: ^second_id, entity: ^player_kind}} -> true
+
         _ -> false
       end
     end)
@@ -176,9 +183,7 @@ defmodule LobbyTest do
 
     assert Helpers.recv_until(clients.first.socket, fn data ->
       case data do
-        {:spawn, %Astero.Create{entity: {:asteroids, asteroids}}} ->
-          assert Enum.count(asteroids.entities) == 5
-          true
+        {:create, %Astero.Create{entity: {:asteroid, _asteroid}}} -> true
         _ -> false
       end
     end)
@@ -192,20 +197,22 @@ defmodule LobbyTest do
 
     assert Helpers.recv_until(clients.first.socket, fn data ->
       case data do
-        {:sim_updates, sim_updates} ->
-          Enum.any?(sim_updates.updates, fn upd ->
-            upd.entity == Astero.Entity.value(:ASTEROID)
+        {:updates, updates} ->
+          Enum.any?(updates.updates, fn upd ->
+            {kind, _entity} = upd.entity
+            kind == :player
           end)
 
         _ -> false
       end
     end)
 
-    assert Helpers.recv_until(clients.first.socket, fn data ->
+    assert Helpers.recv_until(clients.second.socket, fn data ->
       case data do
-        {:sim_updates, sim_updates} ->
-          Enum.any?(sim_updates.updates, fn upd ->
-            upd.entity == Astero.Entity.value(:PLAYER)
+        {:updates, updates} ->
+          Enum.any?(updates.updates, fn upd ->
+            {kind, _entity} = upd.entity
+            kind == :player
           end)
 
         _ -> false
@@ -220,12 +227,14 @@ defmodule LobbyTest do
     Helpers.connect(clients)
 
     now = System.system_time(:milliseconds)
-    latency_measure = Mmob.LatencyMeasure.new(timestamp: now)
+    Logger.debug("now - #{now}")
+    latency_measure = {:latency_measure, Mmob.LatencyMeasure.new(timestamp: now)}
     Helpers.send_to_server(clients.first.socket, latency_measure)
 
     assert Helpers.recv_until(clients.first.socket, fn data ->
       case data do
-        {:latency, %Mmob.LatencyMeasure{timestamp: ^now}} -> true
+        {:latency_measure, %Mmob.LatencyMeasure{timestamp: ^now}} -> true
+
         _ -> false
       end
     end)
