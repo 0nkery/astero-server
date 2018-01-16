@@ -79,11 +79,11 @@ defmodule Astero.Create do
   use Protobuf, syntax: :proto2
 
   @type t :: %__MODULE__{
-    Entity:   {atom, any}
+    entity:   {atom, any}
   }
-  defstruct [:Entity]
+  defstruct [:entity]
 
-  oneof :Entity, 0
+  oneof :entity, 0
   field :player, 1, optional: true, type: Astero.Player, oneof: 0
   field :asteroid, 2, optional: true, type: Astero.Asteroid, oneof: 0
   field :shot, 3, optional: true, type: Astero.Shot, oneof: 0
@@ -106,11 +106,11 @@ defmodule Astero.Update do
   use Protobuf, syntax: :proto2
 
   @type t :: %__MODULE__{
-    Entity:   {atom, any}
+    entity:   {atom, any}
   }
-  defstruct [:Entity]
+  defstruct [:entity]
 
-  oneof :Entity, 0
+  oneof :entity, 0
   field :player, 1, optional: true, type: Astero.Player, oneof: 0
   field :asteroid, 2, optional: true, type: Astero.Asteroid, oneof: 0
 end
@@ -156,11 +156,11 @@ defmodule Astero.Client do
   use Protobuf, syntax: :proto2
 
   @type t :: %__MODULE__{
-    Msg:   {atom, any}
+    msg:   {atom, any}
   }
-  defstruct [:Msg]
+  defstruct [:msg]
 
-  oneof :Msg, 0
+  oneof :msg, 0
   field :input, 1, optional: true, type: Astero.Input, oneof: 0
 end
 
@@ -168,11 +168,11 @@ defmodule Astero.Server do
   use Protobuf, syntax: :proto2
 
   @type t :: %__MODULE__{
-    Msg:     {atom, any}
+    msg:     {atom, any}
   }
-  defstruct [:Msg]
+  defstruct [:msg]
 
-  oneof :Msg, 0
+  oneof :msg, 0
   field :create, 1, optional: true, type: Astero.Create, oneof: 0
   field :destroy, 2, optional: true, type: Astero.Destroy, oneof: 0
   field :updates, 3, optional: true, type: Astero.ManyUpdates, oneof: 0

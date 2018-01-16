@@ -3,19 +3,6 @@ require Logger
 defmodule Sector do
   use GenServer
 
-  alias Astero.JoinAck
-  alias Astero.OtherJoined
-  alias Astero.OtherLeft
-  alias Astero.Asteroids
-  alias Astero.Spawn
-  alias Astero.Asteroid
-  alias Astero.SimUpdates
-  alias Astero.SimUpdate
-  alias Astero.Entity
-  alias Astero.OtherInput
-  alias Astero.LatencyMeasure
-  alias Astero.Shots
-
   alias Sector.State
   alias Sector.Player
 
@@ -30,8 +17,8 @@ defmodule Sector do
     GenServer.start_link(__MODULE__, :ok, opts)
   end
 
-  def player_joined(conn, player_id, nickname) do
-    GenServer.cast(Sector, {:joined, conn, player_id, nickname})
+  def player_joined(conn, player_id, payload) do
+    GenServer.cast(Sector, {:joined, conn, player_id, payload})
   end
 
   def player_left(conn, player_id) do
@@ -46,39 +33,44 @@ defmodule Sector do
   def init(:ok) do
     Logger.info("Started #{__MODULE__}")
 
-    asteroids = Asteroid.Impl.create_asteroids(@initial_asteroids_count, 100.0, 250.0)
-    asteroids = Map.new(Enum.zip(1..@initial_asteroids_count, asteroids))
+    asteroids = Astero.Asteroid.Impl.create_asteroids(@initial_asteroids_count, 100.0, 250.0)
+    asteroids = Enum.map(Enum.zip(1..@initial_asteroids_count, asteroids), fn {id, asteroid} ->
+      %{asteroid | id: id}
+    end)
 
     Process.send_after(self(), :spawn, @asteroid_spawn_rate)
     Process.send_after(self(), :update_sim, @simulation_update_rate)
-    Process.send_after(self(), :update_latencies, 10000)
 
     {:ok, %State{asteroids: asteroids}}
   end
 
   def handle_cast(msg, sector) do
     case msg do
-      {:joined, conn, player_id, nickname} ->
+      {:joined, conn, player_id, payload} ->
+        nickname = Astero.JoinPayload.decode(payload).nickname
+        Logger.debug("Player joined: #{player_id} #{nickname}")
+
         player = Player.random(conn, nickname, @world_bounds)
         send_ack(conn, player_id, player)
 
-        joined = OtherJoined.new(id: player_id, nickname: nickname, body: player.body)
-        Lobby.broadcast({:other_joined, joined}, conn)
+        other = Astero.Player.new(id: player_id, nickname: nickname, body: player.body)
+        joined = Astero.Create.new(entity: {:player, other})
+        broadcast_msg({:create, joined}, conn)
 
         Enum.each(sector.players, fn {id, player} ->
-          older_player = OtherJoined.new(id: id, nickname: player.nickname, body: player.body)
-          Lobby.Connection.send(conn, {:other_joined, older_player})
+          older_player = Astero.Player.new(id: id, body: player.body, nickname: player.nickname)
+          send_msg(conn, {:create, Astero.Create.new(entity: {:player, older_player})})
         end)
 
-        asteroids = Asteroids.new(entities: sector.asteroids)
-        spawn_asteroids = Spawn.new(entity: {:asteroids, asteroids})
-        Lobby.Connection.send(conn, {:spawn, spawn_asteroids})
+        Enum.each(sector.asteroids, fn asteroid ->
+          send_msg(conn, {:create, Astero.Create.new(entity: {:asteroid, asteroid})})
+        end)
 
         {:noreply, %{sector | players: Map.put(sector.players, player_id, player)}}
 
-      {:left, conn, player_id} ->
-        player_left = OtherLeft.new(id: player_id)
-        Lobby.broadcast({:other_left, player_left}, conn)
+      {:left, _conn, player_id} ->
+        player_left = Astero.Destroy.new(id: player_id, entity: Astero.Entity.value(:PLAYER))
+        broadcast_msg({:destroy, player_left})
 
         {_player, players} = Map.pop(sector.players, player_id)
 
@@ -100,48 +92,23 @@ defmodule Sector do
           sector
         else
           new_id = asteroids_count + 1
-          asteroid = Asteroid.Impl.create_asteroid(100.0, 300.0)
-
-          asteroids = Asteroids.new(entities: %{new_id => asteroid})
-          spawn_asteroids = Spawn.new(entity: {:asteroids, asteroids})
-          Lobby.broadcast({:spawn, spawn_asteroids})
+          asteroid = Astero.Asteroid.Impl.create_asteroid(100.0, 300.0)
+          asteroid = %{asteroid | id: new_id}
+          broadcast_msg({:create, Astero.Create.new(entity: {:asteroid, asteroid})})
 
           Process.send_after(self(), :spawn, @asteroid_spawn_rate)
 
-          %{sector | asteroids: Map.put(sector.asteroids, new_id, asteroid)}
+          %{sector | asteroids: [asteroid | sector.asteroids]}
         end
 
         {:noreply, sector}
 
       :update_sim ->
-        {sector, new_shots} = State.update(sector, @simulation_update_rate / 1000.0, @world_bounds)
+        {sector, _new_shots} = State.update(sector, @simulation_update_rate / 1000.0, @world_bounds)
 
         Process.send_after(self(), :update_sim, @simulation_update_rate)
 
         send_sim_updates(sector)
-
-        cur_shot_count = Enum.count(sector.shots)
-        new_shots_count = Enum.count(new_shots)
-
-        shots = if new_shots_count > 0 do
-          shot_count = cur_shot_count + new_shots_count
-
-          new_shots = Map.new(Enum.zip(cur_shot_count..shot_count, new_shots))
-
-          spawn_shots = Spawn.new(entity: {:shots, Shots.new(entities: new_shots)})
-          Lobby.broadcast({:spawn, spawn_shots})
-
-          Map.merge(sector.shots, new_shots)
-        else
-          sector.shots
-        end
-
-        {:noreply, %{sector | shots: shots}}
-
-      :update_latencies ->
-        latency = LatencyMeasure.new(timestamp: System.system_time(:milliseconds))
-        Lobby.broadcast({:latency, latency})
-        Process.send_after(self(), :update_latencies, 10000)
 
         {:noreply, sector}
     end
@@ -153,18 +120,6 @@ defmodule Sector do
         {_old, players} = Map.get_and_update(sector.players, player_id, fn player ->
           updated = player
           |> Player.update_input(input, @world_bounds)
-
-          Lobby.broadcast({:other_input, OtherInput.new(id: player_id, input: updated.input)}, player.conn)
-
-          {player, updated}
-        end)
-
-        %{sector | players: players}
-
-      {:latency, %LatencyMeasure{timestamp: timestamp}} ->
-        {_old, players} = Map.get_and_update(sector.players, player_id, fn player ->
-          updated = Player.update_latency(player, timestamp)
-
           {player, updated}
         end)
 
@@ -172,50 +127,43 @@ defmodule Sector do
     end
   end
 
-  defp send_ack(conn, player_id, player) do
-    join_ack = JoinAck.new(body: player.body, id: player_id)
-    Lobby.Connection.send(conn, {:join_ack, join_ack})
+  defp send_msg(conn, msg) do
+    msg = Astero.Server.new(msg: msg) |> Astero.Server.encode()
+    Lobby.Connection.send(conn, {:proxied, Mmob.Proxied.new(msg: msg)})
+  end
 
-    latency_measure = LatencyMeasure.new(timestamp: System.system_time(:milliseconds))
-    Lobby.Connection.send(conn, {:latency, latency_measure})
+  defp broadcast_msg(msg, except \\ nil) do
+    msg = Astero.Server.new(msg: msg) |> Astero.Server.encode()
+    Lobby.broadcast({:proxied, Mmob.Proxied.new(msg: msg)}, except)
+  end
+
+  defp send_ack(conn, player_id, player) do
+    payload = Astero.Player.new(body: player.body, id: player_id) |> Astero.Player.encode()
+    Lobby.Connection.send(conn, {:join_ack, Mmob.JoinAck.new(payload: payload)})
   end
 
   defp send_sim_updates(sector) do
     Task.start(fn ->
-      asteroid_updates = Enum.map(sector.asteroids, fn {id, asteroid} ->
-        SimUpdate.new(
-          entity: Entity.value(:ASTEROID),
-          id: id,
-          body: %{asteroid.body | size: nil},
-        )
+      asteroid_updates = Enum.map(sector.asteroids, fn asteroid ->
+        Astero.Update.new(entity: {:asteroid, %{asteroid | body: %{asteroid.body | size: nil}}})
       end)
 
       Enum.each(sector.players, fn {_id, player} ->
-        updates = Enum.map(asteroid_updates, fn update ->
-          body = State.update_body(update.body, player.latency / 1000.0)
-
-          %{update | body: body}
-        end)
-        Lobby.Connection.send(player.conn, {:sim_updates, SimUpdates.new(updates: updates)})
+        send_msg(player.conn, {:updates, Astero.ManyUpdates.new(updates: asteroid_updates)})
       end)
     end)
 
     Task.start(fn ->
       player_updates = Enum.map(sector.players, fn {id, player} ->
-        SimUpdate.new(
-          entity: Entity.value(:PLAYER),
+        player_update = Astero.Player.new(
           id: id,
           body: %{player.body | size: nil, rvel: nil}
         )
+        Astero.Update.new(entity: {:player, player_update})
       end)
 
       Enum.each(sector.players, fn {_id, player} ->
-        updates = Enum.map(player_updates, fn update ->
-          body = State.update_body(update.body, player.latency / 1000.0)
-
-          %{update | body: body}
-        end)
-        Lobby.Connection.send(player.conn, {:sim_updates, SimUpdates.new(updates: updates)})
+        send_msg(player.conn, {:updates, Astero.ManyUpdates.new(updates: player_updates)})
       end)
     end)
   end

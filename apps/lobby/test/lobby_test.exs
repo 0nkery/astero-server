@@ -4,20 +4,20 @@ defmodule LobbyTest.Helpers do
   @server_address {0, 0, 0, 0, 0, 0, 0, 1}
   @server_port 11111
 
-  alias Astero.Server
-  alias Astero.Client
-  alias Astero.Join
-  alias Astero.JoinAck
-  alias Astero.Leave
-
   def send_to_server(socket, data) do
-    packet = Client.new(msg: data) |> Client.encode()
+    msg = case data do
+      {:proxied, msg} ->
+        msg = Astero.Client.new(msg: msg) |> Astero.Client.encode()
+        Mmob.Client.new(msg: {:proxied, Mmob.Proxied.new(msg: msg)})
+      msg -> Mmob.Client.new(msg: msg)
+    end
+    packet = Mmob.Client.encode(msg)
     :gen_udp.send(socket, @server_address, @server_port, packet)
   end
 
   def recv_until(socket, check) do
     {:ok, {_, _, packet}} = :gen_udp.recv(socket, 1000, 5000)
-    %Server{msg: data} = Server.decode(packet)
+    %Mmob.Server{msg: data} = Mmob.Server.decode(packet)
     check_result = check.(data)
 
     case check_result do
@@ -29,22 +29,28 @@ defmodule LobbyTest.Helpers do
   end
 
   def connect(clients) do
-    join = {:join, Join.new(nickname: clients.first.nickname)}
+    payload = Astero.JoinPayload.new(nickname: clients.first.nickname) |> Astero.JoinPayload.encode()
+    join = {:join, Mmob.JoinGame.new(payload: payload)}
     send_to_server(clients.first.socket, join)
 
     {true, first_id} = recv_until(clients.first.socket, fn data ->
       case data do
-        {:join_ack, %JoinAck{id: first_id}} -> {true, first_id}
+        {:join_ack, %Mmob.JoinAck{payload: player}} ->
+          player = Astero.Player.decode(player)
+          {true, player.id}
         _ -> false
       end
     end)
 
-    join = {:join, Join.new(nickname: clients.second.nickname)}
+    payload = Astero.JoinPayload.new(nickname: clients.second.nickname) |> Astero.JoinPayload.encode()
+    join = {:join, Mmob.JoinGame.new(payload: payload)}
     send_to_server(clients.second.socket, join)
 
     {true, second_id} = recv_until(clients.second.socket, fn data ->
       case data do
-        {:join_ack, %JoinAck{id: second_id}} -> {true, second_id}
+        {:join_ack, %Mmob.JoinAck{payload: player}} ->
+          player = Astero.Player.decode(player)
+          {true, player.id}
         _ -> false
       end
     end)
@@ -53,7 +59,7 @@ defmodule LobbyTest.Helpers do
   end
 
   def disconnect(client) do
-    leave = {:leave, Leave.new()}
+    leave = {:leave, Mmob.LeaveGame.new()}
     send_to_server(client.socket, leave)
   end
 end
@@ -87,7 +93,7 @@ defmodule LobbyTest do
 
     assert Helpers.recv_until(clients.first.socket, fn data ->
       case data do
-        {:other_joined, %Astero.OtherJoined{id: ^second_id, nickname: broadcasted_nickname}} ->
+        {:other_joined, %Astero.Create{entity: %Astero.Player{id: ^second_id, nickname: broadcasted_nickname}}} ->
           assert broadcasted_nickname == clients.second.nickname
           true
 
@@ -97,7 +103,7 @@ defmodule LobbyTest do
 
     assert Helpers.recv_until(clients.second.socket, fn data ->
       case data do
-        {:other_joined, %Astero.OtherJoined{id: ^first_id, nickname: broadcasted_nickname}} ->
+        {:other_joined, %Astero.Create{entity: %Astero.Player{id: ^first_id, nickname: broadcasted_nickname}}} ->
             assert broadcasted_nickname == clients.first.nickname
             true
 
@@ -135,9 +141,9 @@ defmodule LobbyTest do
     Helpers.disconnect(clients.second)
 
     assert Helpers.recv_until(clients.first.socket, fn data ->
+      player_kind = Astero.Entity.value(:PLAYER)
       case data do
-        {:other_left, %Astero.OtherLeft{id: ^second_id}} -> true
-
+        {:other_left, %Astero.Destroy{id: ^second_id, entity: ^player_kind}} -> true
         _ -> false
       end
     end)
@@ -148,15 +154,16 @@ defmodule LobbyTest do
   test "heartbeats", clients do
     {_first_id, second_id} = Helpers.connect(clients)
 
-    heartbeat = {:heartbeat, Astero.Heartbeat.new()}
+    heartbeat = {:heartbeat, Mmob.Heartbeat.new()}
 
     assert Helpers.recv_until(clients.first.socket, fn data ->
+      player_kind = Astero.Entity.value(:PLAYER)
       case data do
-        {:heartbeat, %Astero.Heartbeat{}} ->
+        {:heartbeat, %Mmob.Heartbeat{}} ->
           Helpers.send_to_server(clients.first.socket, heartbeat)
           false
 
-        {:other_left, %Astero.OtherLeft{id: ^second_id}} -> true
+        {:other_left, %Astero.Destroy{id: ^second_id, entity: ^player_kind}} -> true
         _ -> false
       end
     end)
@@ -169,56 +176,9 @@ defmodule LobbyTest do
 
     assert Helpers.recv_until(clients.first.socket, fn data ->
       case data do
-        {:spawn, %Astero.Spawn{entity: {:asteroids, asteroids}}} ->
+        {:spawn, %Astero.Create{entity: {:asteroids, asteroids}}} ->
           assert Enum.count(asteroids.entities) == 5
           true
-        _ -> false
-      end
-    end)
-
-    Helpers.disconnect(clients.first)
-    Helpers.disconnect(clients.second)
-  end
-
-  test "broadcasting input events", clients do
-    {_first_id, second_id} = Helpers.connect(clients)
-
-    turn_dir = -1
-    turn = {:input, Astero.Input.new(turn: turn_dir)}
-    Helpers.send_to_server(clients.second.socket, turn)
-
-    assert Helpers.recv_until(clients.first.socket, fn data ->
-      case data do
-        {:other_input, %Astero.OtherInput{id: ^second_id, input: input}} ->
-          assert input.turn == turn_dir
-          true
-        _ -> false
-      end
-    end)
-
-    accel_dir = 1
-    accel = {:input, Astero.Input.new(accel: accel_dir)}
-    Helpers.send_to_server(clients.second.socket, accel)
-
-    assert Helpers.recv_until(clients.first.socket, fn data ->
-      case data do
-        {:other_input, %Astero.OtherInput{id: ^second_id, input: input}} ->
-          assert input.accel == accel_dir
-          true
-        _ -> false
-      end
-    end)
-
-    fire = {:input, Astero.Input.new(fire: true)}
-    Helpers.send_to_server(clients.second.socket, fire)
-
-    assert Helpers.recv_until(clients.first.socket, fn data ->
-      case data do
-        {:spawn, %Astero.Spawn{entity: {:shots, shots}}} ->
-          assert Enum.count(shots.entities) == 1
-
-          true
-
         _ -> false
       end
     end)
@@ -256,21 +216,21 @@ defmodule LobbyTest do
     Helpers.disconnect(clients.second)
   end
 
-  test "sending latency measures", clients do
-    join = {:join, Astero.Join.new(nickname: clients.first.nickname)}
-    Helpers.send_to_server(clients.first.socket, join)
+  test "answering latency measures", clients do
+    Helpers.connect(clients)
+
+    now = System.system_time(:milliseconds)
+    latency_measure = Mmob.LatencyMeasure.new(timestamp: now)
+    Helpers.send_to_server(clients.first.socket, latency_measure)
 
     assert Helpers.recv_until(clients.first.socket, fn data ->
       case data do
-        {:latency, %Astero.LatencyMeasure{} = latency} ->
-          Helpers.send_to_server(clients.first.socket, {:latency, latency})
-
-          true
-
+        {:latency, %Mmob.LatencyMeasure{timestamp: ^now}} -> true
         _ -> false
       end
     end)
 
     Helpers.disconnect(clients.first)
+    Helpers.disconnect(clients.second)
   end
 end

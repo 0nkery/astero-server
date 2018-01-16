@@ -60,11 +60,11 @@ defmodule Mmob.Client do
   use Protobuf, syntax: :proto2
 
   @type t :: %__MODULE__{
-    Msg:             {atom, any}
+    msg:             {atom, any}
   }
-  defstruct [:Msg]
+  defstruct [:msg]
 
-  oneof :Msg, 0
+  oneof :msg, 0
   field :join, 1, optional: true, type: Mmob.JoinGame, oneof: 0
   field :leave, 2, optional: true, type: Mmob.LeaveGame, oneof: 0
   field :heartbeat, 3, optional: true, type: Mmob.Heartbeat, oneof: 0
@@ -76,11 +76,11 @@ defmodule Mmob.Server do
   use Protobuf, syntax: :proto2
 
   @type t :: %__MODULE__{
-    Msg:             {atom, any}
+    msg:             {atom, any}
   }
-  defstruct [:Msg]
+  defstruct [:msg]
 
-  oneof :Msg, 0
+  oneof :msg, 0
   field :join_ack, 1, optional: true, type: Mmob.JoinAck, oneof: 0
   field :heartbeat, 2, optional: true, type: Mmob.Heartbeat, oneof: 0
   field :latency_measure, 3, optional: true, type: Mmob.LatencyMeasure, oneof: 0

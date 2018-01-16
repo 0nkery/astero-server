@@ -17,10 +17,6 @@ end
 defmodule Lobby.Connection do
   use GenServer, restart: :transient
 
-  alias Astero.Heartbeat
-  alias Astero.Client
-  alias Astero.Server
-
   alias Lobby.Connection.Player
 
   # Client
@@ -57,8 +53,8 @@ defmodule Lobby.Connection do
         {:noreply, close_connection(player)}
 
       :heartbeat ->
-        Lobby.Connection.send(self(), {:heartbeat, Heartbeat.new()})
-        heartbeat_timer = schedule_ping()
+        Lobby.Connection.send(self(), {:heartbeat, Mmob.Heartbeat.new()})
+        heartbeat_timer = schedule_heartbeat()
 
         {:noreply,
           %{
@@ -75,13 +71,13 @@ defmodule Lobby.Connection do
   def handle_cast(msg, player) do
     case msg do
       {:send, data} ->
-        encoded_packet = Server.new(msg: data) |> Server.encode()
+        encoded_packet = Mmob.Server.new(msg: data) |> Mmob.Server.encode()
         :gen_udp.send(player.socket, player.ip, player.port, encoded_packet)
         {:noreply, player}
 
       {:packet, packet} ->
         try do
-          Client.decode(packet)
+          Mmob.Client.decode(packet)
         rescue
           FunctionClauseError ->
             notify = player.state == :joined
@@ -94,7 +90,7 @@ defmodule Lobby.Connection do
             player = handle(player, decoded)
 
             Process.cancel_timer(player.heartbeat_timer, async: true)
-            heartbeat_timer = schedule_ping()
+            heartbeat_timer = schedule_heartbeat()
 
             {:noreply, %{player | heartbeat_timer: heartbeat_timer, missed_heartbeats: 0}}
         end
@@ -103,24 +99,27 @@ defmodule Lobby.Connection do
 
   defp handle(%Player{state: state} = player, msg) do
     case msg do
-      %Client{msg: {:join, %Astero.Join{nickname: nickname}}} when state == :new ->
-        Logger.debug("Player joined: #{inspect(player.port)} #{player.conn_id} #{nickname}")
+      %Mmob.Client{msg: {:join, %Mmob.JoinGame{payload: payload}}} when state == :new ->
 
-        Sector.player_joined(self(), player.conn_id, nickname)
+        Sector.player_joined(self(), player.conn_id, payload)
 
-        heartbeat_timer = schedule_ping()
+        heartbeat_timer = schedule_heartbeat()
 
         %{player | state: :joined, heartbeat_timer: heartbeat_timer}
 
-      %Client{msg: {:leave, %Astero.Leave{}}} when state == :joined ->
+      %Mmob.Client{msg: {:leave, %Mmob.LeaveGame{}}} when state == :joined ->
         close_connection(player)
 
         player
 
-      %Client{msg: {:heartbeat, %Astero.Heartbeat{}}} -> player
+      %Mmob.Client{msg: {:heartbeat, %Mmob.Heartbeat{}}} -> player
+      %Mmob.Client{msg: {:latency_measurem, measure}} ->
+        Lobby.Connection.send(self(), {:latency_measure, measure})
 
-      %Client{msg: other} ->
-        Sector.handle(other, player.conn_id)
+        player
+
+      %Mmob.Client{msg: {:proxied, proxied_msg}} ->
+        Sector.handle(proxied_msg, player.conn_id)
 
         player
     end
@@ -135,7 +134,7 @@ defmodule Lobby.Connection do
     Process.exit(self(), :normal)
   end
 
-  defp schedule_ping() do
+  defp schedule_heartbeat() do
     Process.send_after(self(), :heartbeat, Application.get_env(:lobby, :heartbeat_interval))
   end
 end

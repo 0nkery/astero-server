@@ -2,14 +2,11 @@ require Logger
 
 defmodule Sector.State do
 
-  defstruct players: %{}, asteroids: %{}, shots: %{}, new_shots: []
+  defstruct players: %{}, asteroids: [], shots: %{}, new_shots: []
 
   alias Astero.Coord
   alias Astero.Asteroid
   alias Astero.Body
-  alias Astero.GameplayEvent
-  alias Astero.EntityLifeUpdate
-  alias Astero.Entity
 
   alias Sector.Player
   alias Sector.Util.Math
@@ -18,12 +15,12 @@ defmodule Sector.State do
   @max_velocity_sq @max_velocity * @max_velocity
 
   def update(%Sector.State{} = sector, dt, bounds) do
-    asteroids = for {id, %Asteroid{} = asteroid} <- sector.asteroids, into: %{} do
+    asteroids = for %Asteroid{} = asteroid <- sector.asteroids, into: [] do
       body = asteroid.body
         |> update_body(dt)
         |> wrap_body(bounds)
 
-      {id, %{asteroid | body: body}}
+      %{asteroid | body: body}
     end
 
     players = for {id, %Player{} = player} <- sector.players, into: %{} do
