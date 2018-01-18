@@ -114,7 +114,10 @@ defmodule Lobby.Connection do
 
       %Mmob.Client{msg: {:heartbeat, %Mmob.Heartbeat{}}} -> player
       %Mmob.Client{msg: {:latency_measure, measure}} ->
-        Lobby.Connection.send(self(), {:latency_measure, measure})
+        Lobby.Connection.send(
+          self(),
+          {:latency_measure, %{measure | server_timestamp: System.system_time(:milliseconds)}}
+        )
 
         player
 

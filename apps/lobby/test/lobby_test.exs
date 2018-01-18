@@ -227,13 +227,14 @@ defmodule LobbyTest do
     Helpers.connect(clients)
 
     now = System.system_time(:milliseconds)
-    Logger.debug("now - #{now}")
     latency_measure = {:latency_measure, Mmob.LatencyMeasure.new(timestamp: now)}
     Helpers.send_to_server(clients.first.socket, latency_measure)
 
     assert Helpers.recv_until(clients.first.socket, fn data ->
       case data do
-        {:latency_measure, %Mmob.LatencyMeasure{timestamp: ^now}} -> true
+        {:latency_measure, %Mmob.LatencyMeasure{timestamp: ^now, server_timestamp: srv_time}} ->
+          assert srv_time != nil
+          true
 
         _ -> false
       end
