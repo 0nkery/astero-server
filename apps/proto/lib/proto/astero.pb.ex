@@ -115,15 +115,15 @@ defmodule Astero.Update do
   field :asteroid, 2, optional: true, type: Astero.Asteroid, oneof: 0
 end
 
-defmodule Astero.ManyUpdates do
+defmodule Astero.UpdateList do
   use Protobuf, syntax: :proto2
 
   @type t :: %__MODULE__{
-    updates: [Astero.Update.t]
+    update_list: [Astero.Update.t]
   }
-  defstruct [:updates]
+  defstruct [:update_list]
 
-  field :updates, 1, repeated: true, type: Astero.Update
+  field :update_list, 1, repeated: true, type: Astero.Update
 end
 
 defmodule Astero.JoinPayload do
@@ -175,7 +175,7 @@ defmodule Astero.Server do
   oneof :msg, 0
   field :create, 1, optional: true, type: Astero.Create, oneof: 0
   field :destroy, 2, optional: true, type: Astero.Destroy, oneof: 0
-  field :updates, 3, optional: true, type: Astero.ManyUpdates, oneof: 0
+  field :list, 3, optional: true, type: Astero.UpdateList, oneof: 0
 end
 
 defmodule Astero.Entity do

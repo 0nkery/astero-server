@@ -38,11 +38,13 @@ defmodule Mmob.LatencyMeasure do
   use Protobuf, syntax: :proto2
 
   @type t :: %__MODULE__{
-    timestamp: non_neg_integer
+    timestamp:        non_neg_integer,
+    server_timestamp: non_neg_integer
   }
-  defstruct [:timestamp]
+  defstruct [:timestamp, :server_timestamp]
 
   field :timestamp, 1, required: true, type: :uint64
+  field :server_timestamp, 2, optional: true, type: :uint64
 end
 
 defmodule Mmob.Proxied do
