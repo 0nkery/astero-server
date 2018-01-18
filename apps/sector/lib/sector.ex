@@ -149,7 +149,7 @@ defmodule Sector do
       end)
 
       Enum.each(sector.players, fn {_id, player} ->
-        send_msg(player.conn, {:updates, Astero.ManyUpdates.new(updates: asteroid_updates)})
+        send_msg(player.conn, {:list, Astero.UpdateList.new(update_list: asteroid_updates)})
       end)
     end)
 
@@ -163,7 +163,7 @@ defmodule Sector do
       end)
 
       Enum.each(sector.players, fn {_id, player} ->
-        send_msg(player.conn, {:updates, Astero.ManyUpdates.new(updates: player_updates)})
+        send_msg(player.conn, {:list, Astero.UpdateList.new(update_list: player_updates)})
       end)
     end)
   end

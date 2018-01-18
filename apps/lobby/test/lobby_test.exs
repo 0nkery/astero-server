@@ -197,8 +197,8 @@ defmodule LobbyTest do
 
     assert Helpers.recv_until(clients.first.socket, fn data ->
       case data do
-        {:updates, updates} ->
-          Enum.any?(updates.updates, fn upd ->
+        {:list, updates} ->
+          Enum.any?(updates.update_list, fn upd ->
             {kind, _entity} = upd.entity
             kind == :player
           end)
@@ -209,8 +209,8 @@ defmodule LobbyTest do
 
     assert Helpers.recv_until(clients.second.socket, fn data ->
       case data do
-        {:updates, updates} ->
-          Enum.any?(updates.updates, fn upd ->
+        {:list, updates} ->
+          Enum.any?(updates.update_list, fn upd ->
             {kind, _entity} = upd.entity
             kind == :player
           end)
