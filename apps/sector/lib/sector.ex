@@ -114,7 +114,10 @@ defmodule Sector do
     end
   end
 
-  defp handle_msg(sector, msg, player_id) do
+  defp handle_msg(sector, %Mmob.Proxied{msg: msg}, player_id) do
+    msg = Astero.Client.decode(msg).msg
+    Logger.debug("Got msg from player #{player_id}: #{inspect msg}")
+
     case msg do
       {:input, input} ->
         {_old, players} = Map.get_and_update(sector.players, player_id, fn player ->
