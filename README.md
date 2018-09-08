@@ -1,4 +1,4 @@
 # Server
 
-**TODO: Add description**
+Abandoned multiplayer Asteroids.
 
